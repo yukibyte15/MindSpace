@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project MindSphere - Integrated Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Dancing+Script:wght@700&family=Caveat+Brush&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #dfe0e7; }
+        .bg-mindsphere-blue { background-color: #6366F1; }
+        .bg-mindsphere-purple { background-color: #4C3C92; }
+        .bg-mindsphere-light { background-color: #F1F3FE; }
+        .text-mindsphere-purple { color: #4C3C92; }
+        .text-mindsphere-gray { color: #64748B; }
+        .border-mindsphere-purple { border-color: #4C3C92; }
+        .ring-mindsphere-blue:focus { ring-color: #6366F1; }
+
+        .map-container { position: relative; height: 60vh; background-image: url('https://images.unsplash.com/photo-1621232082074-1a7750ecc557?q=80&w=627&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'); background-size: cover; background-position: center; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .master-pin { position: absolute; width: 3rem; height: 3rem; border: 2px solid white; border-radius: 9999px; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; align-items: center; justify-content: center; }
+        .master-pin:hover { transform: scale(1.1); box-shadow: 0 0 15px rgba(244, 196, 48, 0.8); }
+        .master-pin img { width: 100%; height: 100%; object-fit: cover; border-radius: 9999px; }
+
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 40; opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+        .modal-content { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95); z-index: 50; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; pointer-events: none; }
+        .modal-backdrop.active { opacity: 1; pointer-events: auto; }
+        .modal-content.active { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+
+        @keyframes pulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); } }
+        .sos-button { animation: pulse 2s infinite; }
+        
+        .confetti-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
+        .confetti { position: absolute; width: 10px; height: 10px; background-color: #F4C430; opacity: 0; filter: saturate(1.25); }
+        @keyframes confetti-fall { 0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; } 100% { transform: translateY(110vh) rotate(720deg); opacity: 0; } }
+
+        .sub-task-list { margin-left: 1rem; margin-top: 0.5rem; border-left: 2px solid #e5e7eb; padding-left: 1rem; }
+        .sub-task-item { font-size: 0.875rem; color: #4b5563; }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { display: inline-block; width: 1.25rem; height: 1.25rem; border: 2px solid rgba(0,0,0,.1); border-left-color: #5C4033; border-radius: 50%; animation: spin 0.6s linear infinite; }
+
+        .animated-section { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
+        .animated-section.visible { opacity: 1; transform: translateY(0); }
+        
+        #chatbot-modal { position: fixed; bottom: 6rem; right: 2rem; width: 90vw; max-width: 400px; height: 70vh; max-height: 600px; z-index: 30; opacity: 0; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s ease; pointer-events: none; }
+        #chatbot-modal.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+        .chat-message { max-width: 80%; }
+        .chat-message strong { color: #4C3C92; }
+        .dark .chat-message strong { color: #A5B4FC; }
+
+        .celebration-quote { font-family: 'Caveat Brush', cursive; font-size: 2.5rem; }
+        .final-celebration-text { font-family: 'Caveat Brush', cursive; font-size: 4rem; animation: flicker 1.5s infinite alternate; }
+
+        @keyframes flicker { 0%, 18%, 22%, 25%, 53%, 57%, 100% { text-shadow: 0 0 4px #4C3C92, 0 0 11px #4C3C92, 0 0 19px #4C3C92, 0 0 40px #6366F1, 0 0 80px #6366F1, 0 0 90px #6366F1, 0 0 100px #6366F1, 0 0 150px #6366F1; } 20%, 24%, 55% { text-shadow: none; } }
+
+        .page-dimmed { filter: brightness(0.5); transition: filter 0.3s ease; }
+        
+        /* --- DARK THEME STYLES --- */
+        html.dark { color-scheme: dark; }
+        .dark body { background-color: #111827; }
+        .dark .bg-white { background-color: #1F2937; }
+        .dark .bg-gray-100 { background-color: #374151; }
+        .dark .bg-gray-50 { background-color: #374151; }
+        .dark .bg-red-50 { background-color: #450a0a; }
+        .dark .bg-mindsphere-light { background-color: #2a2c5c; }
+        .dark .text-mindsphere-purple { color: #A5B4FC; }
+        .dark .text-mindsphere-gray { color: #9CA3AF; }
+        .dark .text-gray-900 { color: #F9FAFB; }
+        .dark .text-gray-700 { color: #D1D5DB; }
+        .dark .text-gray-600 { color: #9CA3AF; }
+        .dark .text-gray-500 { color: #9CA3AF; }
+        .dark .text-gray-400 { color: #9CA3AF; }
+        .dark .text-red-800 { color: #fca5a5; }
+        .dark .text-red-700 { color: #fca5a5; }
+        .dark .border-mindsphere-purple { border-color: #A5B4FC; }
+        .dark .border-gray-300 { border-color: #4B5563; }
+        .dark .border-gray-200 { border-color: #4B5563; }
+        .dark .border { border-color: #4B5563; }
+        .dark .shadow-md, .dark .shadow-lg, .dark .shadow-xl, .dark .shadow-sm { box-shadow: 0 0 #0000, 0 0 #0000, 0 1px 3px 0 rgba(0,0,0,0.4), 0 1px 2px -1px rgba(0,0,0,0.4); }
+        .dark .ring-black { ring-color: #ffffff; }
+        .dark .map-container { background-image: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop'); }
+        .dark #avatar-dropdown { background-color: #374151; }
+        .dark .hover\:bg-gray-100:hover { background-color: #4B5563; }
+        .dark .hover\:bg-red-200:hover { background-color: #7f1d1d; }
+        .dark .theme-btn.active { background-color: #4F46E5; color: white; }
+        .theme-btn.active { background-color: #E0E7FF; color: #4F46E5;}
+        .dark .dark\:bg-gray-800 { background-color: #1F2937; }
+        .dark .dark\:text-white { color: #F9FAFB; }
+        
+        .toggle-checkbox:checked { right: 0; border-color: #6366F1; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #6366F1; }
+        
+        /* --- POMODORO STYLES --- */
+        #pomodoro-page { z-index: 100; }
+        #pomodoro-sky { position: absolute; top: 0; left: 0; width: 100%; height: 50%; z-index: -1; }
+        .cloud { position: absolute; background: white; border-radius: 50%; opacity: 0.8; }
+        .star { position: absolute; background: white; border-radius: 50%; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+        .moon { position: absolute; width: 50px; height: 50px; border-radius: 50%; box-shadow: 15px 15px 0 0 white; }
+        @keyframes move-cloud { 0% { transform: translateX(-150px); } 100% { transform: translateX(100vw); } }
+        #stick-man { transition: transform 1s linear, opacity 0.5s; will-change: transform; }
+        .firework { position: absolute; border-radius: 50%; opacity: 0; transform: scale(0); }
+        @keyframes firework-explode { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+        #pomodoro-path-container svg { overflow: visible; }
+    </style>
+</head>
+<body class="text-mindsphere-purple antialiased">
+    <div id="confetti-container" class="confetti-container"></div>
+    <div id="main-content-wrapper" class="min-h-screen max-w-7xl mx-auto p-4 md:p-8">
+
+        <header class="flex justify-between items-center mb-6">
+            <div class="flex items-center">
+                <img src="https://i.postimg.cc/pdLcYX9K/image.png" alt="MindSphere Logo" class="h-16 md:h-20 mr-3">
+                <div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-mindsphere-purple" data-lang-key="header_title">MindSphere</h1>
+                    <p class="text-sm text-mindsphere-gray font-medium" data-lang-key="header_subtitle">Your Space for Growth & Wellness</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="sos-btn" class="sos-button bg-red-500 text-white font-bold py-2 px-4 rounded-full shadow-lg flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v4a1 1 0 102 0V7zm-1 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                    <span class="hidden sm:inline">SOS</span>
+                </button>
+                <div class="relative">
+                    <button id="avatar-button" type="button" class="block focus:outline-none">
+                        <img src="https://placehold.co/40x40/6366F1/FFFFFF?text=A" alt="User Avatar" class="rounded-full border-2 border-mindsphere-purple">
+                    </button>
+                    <div id="avatar-dropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 ring-1 ring-black ring-opacity-5">
+                        <a href="#" class="dropdown-nav-link block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-target="profile-section" data-lang-key="dropdown_profile">Profile</a>
+                        <div class="border-t border-gray-200 my-1"></div>
+                        <div class="px-4 pt-2 pb-1 text-xs text-gray-400" data-lang-key="dropdown_language_label">Language</div>
+                        <a href="#" class="lang-btn block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-lang="en">English</a>
+                        <a href="#" class="lang-btn block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-lang="hi">हिन्दी (Hindi)</a>
+                        <a href="#" class="lang-btn block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-lang="ks">کٲشُر (Kashmiri)</a>
+                        <div class="border-t border-gray-200 my-1"></div>
+                        <div class="px-4 pt-2 pb-1 text-xs text-gray-400" data-lang-key="dropdown_theme_label">Theme</div>
+                        <div class="flex justify-around px-2 py-1">
+                            <button class="theme-btn p-2 rounded-lg" data-theme="light" title="Light Theme">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm-.707 10.607a1 1 0 011.414 0l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM3 11a1 1 0 100-2H2a1 1 0 100 2h1z"></path></svg>
+                            </button>
+                            <button class="theme-btn p-2 rounded-lg" data-theme="dark" title="Dark Theme">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                            </button>
+                        </div>
+                         <div class="border-t border-gray-200 my-1"></div>
+                        <a href="#" class="dropdown-nav-link block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-target="location-section" data-lang-key="dropdown_location">Location</a>
+                        <a href="#" class="dropdown-nav-link block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" data-target="medical-history-section" data-lang-key="dropdown_medical_history">Medical History</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <nav class="bg-white shadow-md rounded-lg mb-8">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                <div class="flex flex-wrap justify-center items-center gap-x-4 gap-y-2">
+                    <a href="#" class="nav-link border-b-2 border-mindsphere-purple text-gray-900 inline-flex items-center px-3 py-2 text-base font-medium" data-target="home-section" data-lang-key="nav_home">Home</a>
+                    <a href="#" class="nav-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-3 py-2 text-base font-medium" data-target="events-section" data-lang-key="nav_events">Events and Meetups</a>
+                    <a href="#" class="nav-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-3 py-2 text-base font-medium" data-target="counsellors-section" data-lang-key="nav_counsellors">Counsellors</a>
+                    <a href="#" class="nav-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-3 py-2 text-base font-medium" data-target="wellness-coach-section" data-lang-key="nav_wellness_coach">Wellness Coach</a>
+                    <a href="#" class="nav-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-3 py-2 text-base font-medium" data-target="resources-section" data-lang-key="nav_resources">Resource page</a>
+                    <a href="#" class="nav-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-3 py-2 text-base font-medium" data-target="chats-section" data-lang-key="nav_chats">My chats</a>
+                    <a href="#" class="nav-link border-b-2 border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-3 py-2 text-base font-medium" data-target="join-us-section" data-lang-key="nav_join">Join us</a>
+                </div>
+            </div>
+        </nav>
+
+        <div id="home-header-content" class="text-center mb-8">
+            <p class="text-2xl font-medium text-mindsphere-purple">Hello Aisha!</p>
+        </div>
+
+        <main>
+            <section id="home-section" class="page-content">
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Left Column -->
+                    <div class="space-y-8">
+                        <div id="quote-container" class="p-4 bg-mindsphere-light rounded-lg text-center relative animated-section">
+                            <p id="quote-text" class="text-xl italic text-mindsphere-purple">"The journey of a thousand miles begins with a single step."</p>
+                            <p id="quote-author" class="mt-2 font-semibold text-mindsphere-gray">- Lao Tzu</p>
+                            <button id="generate-quote-btn" class="absolute top-2 right-2 p-2 rounded-full hover:bg-indigo-100" title="Generate new affirmation">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M11.534 7h3.932a.25.25 0 0 1 .192.41l-1.966 2.36a.25.25 0 0 1-.384 0l-1.966-2.36a.25.25 0 0 1 .192-.41zm-11 2h3.932a.25.25 0 0 0 .192-.41L2.692 6.23a.25.25 0 0 0-.384 0L.342 8.59A.25.25 0 0 0 .534 9z"/><path fill-rule="evenodd" d="M8 3c-1.552 0-2.94.707-3.857 1.818a.5.5 0 1 1-.771-.636A6.002 6.002 0 0 1 13.917 7H12.5A4.5 4.5 0 0 0 8 3zM3.143 8.182A.5.5 0 1 1 2.37 7.546 6.002 6.002 0 0 1 8 2a6 6 0 0 1 6 6h-1.5A4.5 4.5 0 0 0 8 3.5a4.5 4.5 0 0 0-4.857 4.682z"/></svg>
+                            </button>
+                        </div>
+                        <div class="animated-section" style="transition-delay: 200ms;">
+                            <p class="mb-4 text-center lg:text-left text-mindsphere-gray font-medium">Tap an artisan's pin to discover their story and craft.</p>
+                            <div id="map" class="map-container overflow-hidden"></div>
+                        </div>
+                    </div>
+                    <!-- Right Column -->
+                    <div class="animated-section" style="transition-delay: 100ms;">
+                        <div class="bg-white p-6 rounded-2xl shadow-sm h-full">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-2xl font-bold text-mindsphere-purple" data-lang-key="tasks_title">Today's Tasks</h2>
+                                <button id="open-pomodoro-btn" class="bg-mindsphere-blue text-white font-bold py-1 px-3 rounded-lg text-sm hover:bg-mindsphere-purple">Pomo</button>
+                            </div>
+                            <div class="flex gap-2 mb-4">
+                                <input type="text" id="todo-input" class="flex-grow border-2 border-gray-300 rounded-lg p-2 focus:ring-2 ring-mindsphere-blue focus:outline-none" placeholder="Add a new task..." data-lang-key="add_task_placeholder">
+                                <button id="add-todo-btn" class="bg-mindsphere-purple text-white font-bold py-2 px-4 rounded-lg hover:bg-mindsphere-blue" data-lang-key="add_task_button">Add</button>
+                            </div>
+                            <ul id="todo-list" class="space-y-2 mb-6 max-h-[30vh] overflow-y-auto pr-2"></ul>
+                            
+                            <div class="border-t pt-6">
+                                <h2 class="text-2xl font-bold text-mindsphere-purple mb-2" data-lang-key="growth_path_title">My Growth Path</h2>
+                                <div id="growth-path-container" class="relative h-48 flex justify-center items-center">
+                                    <!-- SVG Path will be injected here -->
+                                </div>
+                                <p class="text-center text-sm text-mindsphere-gray font-medium mt-2">Complete tasks to advance on your path!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+            <!-- Other sections remain unchanged -->
+            <section id="events-section" class="page-content hidden">
+                <div class="max-w-4xl mx-auto">
+                    <h2 class="text-3xl font-bold text-center text-mindsphere-purple mb-8" data-lang-key="nav_events">Events and Meetups</h2>
+            
+                    <!-- Offline Meetups Section -->
+                    <div>
+                        <h3 class="text-2xl font-bold text-mindsphere-purple mb-4 border-b pb-2">Offline Meetups</h3>
+                        <p class="text-mindsphere-gray mb-6">Join our free, in-person events organized across Jammu & Kashmir to connect, share, and grow with the community.</p>
+            
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Therapy Meetup Card -->
+                            <a href="https://www.meetup.com/find/?keywords=therapy&location=in--jammu" target="_blank" rel="noopener noreferrer" class="block">
+                                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 h-full">
+                                    <h4 class="font-bold text-lg text-mindsphere-purple">Therapy Meetups</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">A safe space to share and listen, guided by professional facilitators.</p>
+                                    <div class="mt-4 border-t pt-3">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">📍 Lal Chowk, Srinagar</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Next Meetup: September 27, 2025</p>
+                                    </div>
+                                </div>
+                            </a>
+            
+                            <!-- Poetry Meetup Card -->
+                             <a href="https://www.meetup.com/find/?keywords=poetry&location=in--srinagar" target="_blank" rel="noopener noreferrer" class="block">
+                                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 h-full">
+                                     <h4 class="font-bold text-lg text-mindsphere-purple">Poetry Meetups</h4>
+                                     <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">Express yourself through verses and connect with fellow poets.</p>
+                                     <div class="mt-4 border-t pt-3">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">📍 Gulmarg Greens Park</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Next Meetup: October 5, 2025</p>
+                                    </div>
+                                </div>
+                            </a>
+            
+                            <!-- Art Meetup Card -->
+                            <a href="https://www.meetup.com/find/?keywords=art&location=in--jammu" target="_blank" rel="noopener noreferrer" class="block">
+                                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 h-full">
+                                     <h4 class="font-bold text-lg text-mindsphere-purple">Art Meetups</h4>
+                                     <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">A creative outlet for artists of all levels. Bring your supplies!</p>
+                                     <div class="mt-4 border-t pt-3">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">📍 Residency Road, Jammu</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Next Meetup: September 26, 2025</p>
+                                    </div>
+                                </div>
+                            </a>
+            
+                            <!-- Business Meetup Card -->
+                            <a href="https://www.meetup.com/find/?keywords=business&location=in--srinagar" target="_blank" rel="noopener noreferrer" class="block">
+                                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 h-full">
+                                     <h4 class="font-bold text-lg text-mindsphere-purple">Business Meetups</h4>
+                                     <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">Network with local entrepreneurs, share ideas, and build connections.</p>
+                                     <div class="mt-4 border-t pt-3">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">📍 Trikuta Nagar, Jammu</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Next Workshop: October 11, 2025</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+            
+                    <!-- Online Meetups Section -->
+                    <div class="mt-12">
+                        <h3 class="text-2xl font-bold text-mindsphere-purple mb-4 border-b pb-2">Online Meetups</h3>
+                        <p class="text-mindsphere-gray mb-6">Participate from anywhere. Join our virtual sessions for support and learning.</p>
+            
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <!-- Google Meet Card -->
+                            <a href="https://meet.google.com/" target="_blank" rel="noopener noreferrer" class="block">
+                                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-center gap-4 hover:shadow-xl transition-shadow duration-300 h-full">
+                                    <img src="https://www.vectorlogo.zone/logos/google_meet/google_meet-icon.svg" alt="Google Meet" class="h-10 w-10">
+                                    <div>
+                                        <h4 class="font-bold text-lg text-mindsphere-purple">Google Meet Sessions</h4>
+                                        <p class="text-sm text-gray-600 dark:text-gray-300">Weekly group discussions. Link shared upon registration.</p>
+                                    </div>
+                                </div>
+                            </a>
+            
+                             <!-- Zoom Card -->
+                             <a href="https://zoom.us/" target="_blank" rel="noopener noreferrer" class="block">
+                                 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex items-center gap-4 hover:shadow-xl transition-shadow duration-300 h-full">
+                                    <img src="https://www.vectorlogo.zone/logos/zoom/zoom-icon.svg" alt="Zoom" class="h-10 w-10">
+                                    <div>
+                                        <h4 class="font-bold text-lg text-mindsphere-purple">Zoom Webinars</h4>
+                                        <p class="text-sm text-gray-600 dark:text-gray-300">Expert-led sessions on various mental wellness topics.</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Sports Events Section -->
+                    <div class="mt-12">
+                        <h3 class="text-2xl font-bold text-mindsphere-purple mb-4 border-b pb-2">Sports Events</h3>
+                        <p class="text-mindsphere-gray mb-6">Get active and boost your mood with our community sports events. All are welcome!</p>
+            
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <!-- Free Sports Event -->
+                            <a href="https://jksportscouncil.in/" target="_blank" rel="noopener noreferrer" class="block">
+                                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 h-full">
+                                    <h4 class="font-bold text-lg text-mindsphere-purple">Community Football Match (Free)</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">A friendly match for all skill levels. Come play, cheer, and connect!</p>
+                                    <div class="mt-4 border-t pt-3">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">📍 TRC Turf, Srinagar</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Event Date: September 28, 2025</p>
+                                    </div>
+                                </div>
+                            </a>
+            
+                             <!-- Marathon -->
+                             <a href="https://www.townscript.com/in/jammu/marathon" target="_blank" rel="noopener noreferrer" class="block">
+                                 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 h-full">
+                                    <h4 class="font-bold text-lg text-mindsphere-purple">Jammu City Marathon</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">Join the annual city marathon. Choose between a 5K fun run or a half-marathon.</p>
+                                    <div class="mt-4 border-t pt-3">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">📍 M.A. Stadium, Jammu</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Event Date: November 2, 2025</p>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <!-- Race Competition -->
+                            <a href="https://jktourism.jk.gov.in/" target="_blank" rel="noopener noreferrer" class="block">
+                                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 h-full">
+                                    <h4 class="font-bold text-lg text-mindsphere-purple">Hill Sprint Challenge</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">Test your endurance in this challenging uphill race. Open to all runners.</p>
+                                    <div class="mt-4 border-t pt-3">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">📍 Shankaracharya Hill, Srinagar</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Event Date: October 19, 2025</p>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <!-- General Competition -->
+                            <a href="https://jktourism.jk.gov.in/" target="_blank" rel="noopener noreferrer" class="block">
+                                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 h-full">
+                                    <h4 class="font-bold text-lg text-mindsphere-purple">Kashmir Cycling Championship</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">An annual competition through scenic routes. Prizes for top finishers.</p>
+                                    <div class="mt-4 border-t pt-3">
+                                        <p class="text-xs font-semibold text-gray-700 dark:text-gray-200">📍 Starts from Dal Lake, Srinagar</p>
+                                        <p class="text-xs text-gray-500 dark:text-gray-400">Event Date: October 12, 2025</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+            <section id="counsellors-section" class="page-content hidden">
+                <h2 class="text-3xl font-bold text-center text-mindsphere-purple mb-4" data-lang-key="nav_counsellors">Find a Counsellor</h2>
+                <p class="text-mindsphere-gray text-center">Browse our list of certified counsellors.</p>
+            </section>
+            <section id="resources-section" class="page-content hidden">
+                <h2 class="text-3xl font-bold text-center text-mindsphere-purple mb-4" data-lang-key="nav_resources">Wellness Resources</h2>
+                <p class="text-mindsphere-gray text-center">Articles, videos, and tools to support your mental wellness journey.</p>
+            </section>
+            <section id="chats-section" class="page-content hidden">
+                 <h2 class="text-3xl font-bold text-center text-mindsphere-purple mb-8" data-lang-key="nav_chats">My Chats</h2>
+                <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+                    <!-- Left Column: Chat List -->
+                    <div class="md:col-span-1 bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4 h-[75vh] flex flex-col">
+                        <input type="text" placeholder="Search chats..." class="w-full p-2 mb-4 border rounded-lg dark:bg-gray-700 dark:border-gray-600">
+                        
+                        <!-- Direct Messages -->
+                        <h3 class="text-lg font-bold text-mindsphere-purple mb-2 px-2">Direct Messages</h3>
+                        <ul id="dm-list" class="space-y-1 mb-4">
+                            <li data-chat-id="rita" class="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-3">
+                                <div class="relative">
+                                    <img src="https://placehold.co/40x40/FFC0CB/000000?text=R" alt="Rita's avatar" class="rounded-full">
+                                    <span class="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-400 ring-2 ring-white dark:ring-gray-800"></span>
+                                </div>
+                                <div class="flex-1 truncate">
+                                    <p class="font-semibold text-gray-900 dark:text-white">Rita</p>
+                                    <p class="text-sm text-gray-500 truncate">Sounds like a plan! See you then.</p>
+                                </div>
+                            </li>
+                            <li data-chat-id="rohan" class="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-3">
+                                 <img src="https://placehold.co/40x40/ADD8E6/000000?text=R" alt="Rohan's avatar" class="rounded-full">
+                                <div class="flex-1 truncate">
+                                    <p class="font-semibold text-gray-900 dark:text-white">Rohan</p>
+                                    <p class="text-sm text-gray-500 truncate">Can you send me the notes from the last session?</p>
+                                </div>
+                            </li>
+                        </ul>
+            
+                        <!-- Groups -->
+                        <h3 class="text-lg font-bold text-mindsphere-purple mt-4 mb-2 px-2">Groups</h3>
+                        <ul id="group-list" class="space-y-1">
+                            <li data-chat-id="group-adhd" class="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-mindsphere-light dark:bg-gray-700 flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-mindsphere-purple" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-gray-900 dark:text-white">ADHD</p>
+                                    <p class="text-sm text-gray-500">8 Members</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+            
+                    <!-- Right Column: Chat Window -->
+                    <div class="md:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-md flex flex-col h-[75vh]">
+                        <!-- Chat Header -->
+                        <div id="chat-header" class="p-4 border-b dark:border-gray-700 flex items-center justify-between">
+                            <!-- Dynamically populated -->
+                        </div>
+                        
+                        <!-- Messages Area -->
+                        <div id="chat-messages-area" class="flex-1 p-4 space-y-4 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+                           <!-- Dynamically populated -->
+                        </div>
+                        
+                        <!-- Input Area -->
+                        <div class="p-4 border-t dark:border-gray-700">
+                            <div class="flex gap-2">
+                                <input type="text" class="flex-grow border-2 border-gray-300 rounded-lg p-2 focus:ring-2 ring-mindsphere-blue focus:outline-none dark:bg-gray-700 dark:border-gray-600" placeholder="Type a message...">
+                                <button class="bg-mindsphere-purple text-white font-bold p-3 rounded-lg hover:bg-mindsphere-blue">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                                </button>
+                            </div>
+                             <p id="group-note" class="hidden text-xs text-mindsphere-gray mt-2 text-center">Note: In groups, your name is always anonymous to ensure a safe space.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="join-us-section" class="page-content hidden">
+                <h2 class="text-3xl font-bold text-center text-mindsphere-purple mb-4" data-lang-key="nav_join">Join Us</h2>
+                <p class="text-mindsphere-gray text-center">Information on how to join our community as a user or a professional.</p>
+            </section>
+            <section id="wellness-coach-section" class="page-content hidden animated-section">
+                <div class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-xl dark:bg-gray-800">
+                    <h2 class="text-2xl font-bold text-mindsphere-purple mb-4 flex items-center gap-2">✨ Wellness Coach</h2>
+                    <div id="wellness-coach-response" class="min-h-[150px] bg-gray-100 rounded-lg p-3 text-gray-700 mb-4 overflow-y-auto dark:bg-gray-700 dark:text-gray-300">Ask me anything about managing stress, improving focus, or practicing mindfulness.</div>
+                    <div class="flex gap-2">
+                        <input type="text" id="wellness-coach-prompt" class="flex-grow border-2 border-gray-300 rounded-lg p-2 focus:ring-2 ring-mindsphere-blue focus:outline-none dark:bg-gray-700 dark:border-gray-600" placeholder="e.g., How to stop procrastinating?" data-lang-key="wellness_coach_placeholder">
+                        <button id="wellness-coach-ask-btn" class="bg-mindsphere-blue text-white font-bold py-2 px-4 rounded-lg hover:bg-mindsphere-purple" data-lang-key="wellness_coach_ask_button">Ask</button>
+                    </div>
+                    <div class="mt-4 border-t pt-4 dark:border-gray-600">
+                        <button id="wellness-coach-summary-btn" class="w-full flex items-center justify-center gap-2 bg-mindsphere-purple text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-colors" data-lang-key="generate_summary_button">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" /></svg>
+                            Generate Problem Report
+                        </button>
+                        <button id="wellness-coach-copy-btn" class="hidden mt-2 w-full bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200" data-lang-key="copy_report_button">Copy Report</button>
+                    </div>
+                </div>
+            </section>
+            <section id="profile-section" class="page-content hidden animated-section">
+                <h2 class="text-3xl font-bold text-mindsphere-purple mb-8 text-center md:text-left" data-lang-key="profile_title">My Profile</h2>
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Name -->
+                        <div class="border p-4 rounded-xl">
+                            <label class="text-sm font-medium text-mindsphere-gray" data-lang-key="profile_name">Name</label>
+                            <div class="flex justify-between items-center mt-1">
+                                <p data-field="name" class="text-lg text-mindsphere-purple focus:bg-indigo-50 focus:p-1 focus:rounded-md focus:outline-none">Aisha</p>
+                                <button class="edit-btn text-mindsphere-blue hover:underline text-sm font-semibold" data-lang-key="edit_button">Edit</button>
+                            </div>
+                        </div>
+                        <!-- Contact No. -->
+                        <div class="border p-4 rounded-xl">
+                            <label class="text-sm font-medium text-mindsphere-gray" data-lang-key="profile_contact">Contact No.</label>
+                            <div class="flex justify-between items-center mt-1">
+                                <p data-field="contact" class="text-lg text-mindsphere-purple focus:bg-indigo-50 focus:p-1 focus:rounded-md focus:outline-none">1234567890</p>
+                                <button class="edit-btn text-mindsphere-blue hover:underline text-sm font-semibold" data-lang-key="edit_button">Edit</button>
+                            </div>
+                        </div>
+                        <!-- Email Id -->
+                        <div class="border p-4 rounded-xl">
+                            <label class="text-sm font-medium text-mindsphere-gray" data-lang-key="profile_email">Email Id</label>
+                            <div class="flex justify-between items-center mt-1">
+                                <p data-field="email" class="text-lg text-mindsphere-purple focus:bg-indigo-50 focus:p-1 focus:rounded-md focus:outline-none">aisha12@gmail.com</p>
+                                <button class="edit-btn text-mindsphere-blue hover:underline text-sm font-semibold" data-lang-key="edit_button">Edit</button>
+                            </div>
+                        </div>
+                        <!-- Age -->
+                        <div class="border p-4 rounded-xl">
+                            <label class="text-sm font-medium text-mindsphere-gray" data-lang-key="profile_age">Age</label>
+                             <div class="flex justify-between items-center mt-1">
+                                <p data-field="age" class="text-lg text-mindsphere-purple focus:bg-indigo-50 focus:p-1 focus:rounded-md focus:outline-none">20</p>
+                                <button class="edit-btn text-mindsphere-blue hover:underline text-sm font-semibold" data-lang-key="edit_button">Edit</button>
+                            </div>
+                        </div>
+                        <!-- Date of Birth -->
+                        <div class="border p-4 rounded-xl">
+                            <label class="text-sm font-medium text-mindsphere-gray" data-lang-key="profile_dob">Date of Birth</label>
+                             <div class="flex justify-between items-center mt-1">
+                                <p data-field="dob" class="text-lg text-mindsphere-purple focus:bg-indigo-50 focus:p-1 focus:rounded-md focus:outline-none">XYZ</p>
+                                <button class="edit-btn text-mindsphere-blue hover:underline text-sm font-semibold" data-lang-key="edit_button">Edit</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="location-section" class="page-content hidden animated-section">
+                <h2 class="text-3xl font-bold text-mindsphere-purple mb-8 text-center md:text-left" data-lang-key="location_title">Update Your Location</h2>
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm space-y-6">
+                    <div>
+                        <button id="get-location-btn" class="w-full flex items-center justify-center gap-2 bg-mindsphere-blue text-white font-bold py-3 px-4 rounded-lg hover:bg-mindsphere-purple transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                            </svg>
+                            <span data-lang-key="location_button_current">Use My Current Location</span>
+                        </button>
+                        <p id="location-output" class="text-mindsphere-gray text-sm mt-2 text-center h-5"></p>
+                    </div>
+                    
+                    <div class="relative">
+                      <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+                        </svg>
+                      </div>
+                      <input type="text" id="address-1-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-mindsphere-blue focus:border-mindsphere-blue block w-full pl-10 p-2.5" placeholder="Address line 1" data-lang-key="location_address1_label">
+                    </div>
+
+                    <input type="text" id="address-2-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-mindsphere-blue focus:border-mindsphere-blue block w-full p-2.5" placeholder="Address line 2 (Optional)" data-lang-key="location_address2_label">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <input type="text" id="city-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-mindsphere-blue focus:border-mindsphere-blue block w-full p-2.5" placeholder="City" data-lang-key="location_city_label">
+                        <input type="text" id="state-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-mindsphere-blue focus:border-mindsphere-blue block w-full p-2.5" placeholder="State" data-lang-key="location_state_label">
+                    </div>
+                    
+                    <input type="text" id="pincode-input" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-mindsphere-blue focus:border-mindsphere-blue block w-full p-2.5" placeholder="Pincode" data-lang-key="location_pincode_label">
+                    
+                    <button id="save-location-btn" class="w-full bg-mindsphere-purple text-white font-bold py-3 px-4 rounded-lg hover:bg-opacity-90" data-lang-key="location_save_button">Save Location</button>
+                </div>
+            </section>
+             <section id="medical-history-section" class="page-content hidden animated-section">
+                <h2 class="text-3xl font-bold text-mindsphere-purple mb-8 text-center md:text-left" data-lang-key="medical_history_title">Your Medical History</h2>
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm space-y-6">
+                    <!-- Upload 1 -->
+                    <div class="border p-4 rounded-xl">
+                        <div class="flex items-center gap-4">
+                            <label for="file-upload-1" class="inline-flex items-center gap-2 bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                                <span data-lang-key="upload_label_1">Upload Document 1</span>
+                            </label>
+                            <input id="file-upload-1" type="file" class="hidden">
+                            <p id="file-name-1" class="text-sm text-gray-500 truncate"></p>
+                        </div>
+                        <textarea class="mt-3 w-full border-2 border-gray-300 rounded-lg p-2 focus:ring-2 ring-mindsphere-blue focus:outline-none" rows="2" placeholder="Add context for this document..." data-lang-key="context_placeholder"></textarea>
+                    </div>
+                    <!-- Upload 2 -->
+                    <div class="border p-4 rounded-xl">
+                         <div class="flex items-center gap-4">
+                            <label for="file-upload-2" class="inline-flex items-center gap-2 bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                                <span data-lang-key="upload_label_2">Upload Document 2</span>
+                            </label>
+                            <input id="file-upload-2" type="file" class="hidden">
+                            <p id="file-name-2" class="text-sm text-gray-500 truncate"></p>
+                        </div>
+                        <textarea class="mt-3 w-full border-2 border-gray-300 rounded-lg p-2 focus:ring-2 ring-mindsphere-blue focus:outline-none" rows="2" placeholder="Add context for this document..." data-lang-key="context_placeholder"></textarea>
+                    </div>
+                    <!-- Upload 3 -->
+                    <div class="border p-4 rounded-xl">
+                         <div class="flex items-center gap-4">
+                            <label for="file-upload-3" class="inline-flex items-center gap-2 bg-gray-100 text-gray-700 font-semibold py-2 px-4 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                                <span data-lang-key="upload_label_3">Upload Document 3</span>
+                            </label>
+                            <input id="file-upload-3" type="file" class="hidden">
+                            <p id="file-name-3" class="text-sm text-gray-500 truncate"></p>
+                        </div>
+                        <textarea class="mt-3 w-full border-2 border-gray-300 rounded-lg p-2 focus:ring-2 ring-mindsphere-blue focus:outline-none" rows="2" placeholder="Add context for this document..." data-lang-key="context_placeholder"></textarea>
+                    </div>
+                    <button id="save-medical-history-btn" class="w-full bg-mindsphere-purple text-white font-bold py-3 px-4 rounded-lg hover:bg-opacity-90" data-lang-key="save_medical_history_button">Save Medical History</button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-12 py-8 bg-white dark:bg-gray-800 text-center rounded-lg shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                 <h2 class="text-2xl font-bold text-mindsphere-purple mb-2" data-lang-key="footer_about_title">About Us</h2>
+                 <p class="text-mindsphere-gray px-4" data-lang-key="footer_about_text">
+                    We are a team of six B.Tech students dedicated to making mental health care accessible and affordable.<br>
+                    Our platform integrates psychology with technology, offering therapy, support groups, and innovative tools.<br>
+                    We strive to reduce barriers of cost and stigma while providing a safe, inclusive environment.<br>
+                    Our vision is a world where mental well-being is recognized as a fundamental right for all.<br>
+                    Contact us: <a href="mailto:mindsphere213@gmail.com" class="text-mindsphere-blue hover:underline">mindsphere213@gmail.com</a>
+                 </p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- MODALS & OVERLAYS -->
+    <div id="master-modal-backdrop" class="modal-backdrop"></div>
+    <div id="master-modal-content" class="modal-content w-11/12 max-w-lg bg-white rounded-2xl shadow-xl p-6"></div>
+    <div id="sos-modal-backdrop" class="modal-backdrop"></div>
+    <div id="sos-modal-content" class="modal-content w-11/11 max-w-md bg-red-50 text-center p-6 rounded-2xl shadow-xl">
+        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16 text-red-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+        <h2 class="text-2xl font-bold mt-4 text-red-800">Emergency Support</h2>
+        <p class="mt-2 text-red-700">If you are in immediate distress, please connect with a professional right away.</p>
+        <div class="mt-6 space-y-3">
+            <button id="call-helpline-btn" class="w-full bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600">Request Help</button>
+            <button class="w-full bg-red-100 text-red-800 font-bold py-3 px-4 rounded-lg hover:bg-red-200">Chat with a Therapist</button>
+            <button onclick="closeSosModal()" class="mt-2 text-sm text-gray-600 hover:underline">I'm okay, close this.</button>
+        </div>
+    </div>
+    <!-- Helpline Request Modal -->
+    <div id="helpline-form-modal-backdrop" class="modal-backdrop"></div>
+    <div id="helpline-form-modal-content" class="modal-content w-11/12 max-w-md bg-white p-6 rounded-2xl shadow-xl dark:bg-gray-800">
+        <h2 class="text-2xl font-bold text-mindsphere-purple mb-4">Urgent Assistance Request</h2>
+        <p class="text-mindsphere-gray mb-4 text-sm">Please provide your details. We will connect with you shortly.</p>
+        <div>
+            <label for="helpline-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Mobile Number</label>
+            <input type="tel" id="helpline-number" class="mt-1 block w-full border-2 border-gray-300 rounded-lg p-2 focus:ring-2 ring-mindsphere-blue focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Your 10-digit mobile number">
+        </div>
+        <p id="helpline-form-status" class="text-green-600 text-sm mt-3 h-4"></p>
+        <div class="mt-6 flex gap-4">
+            <button onclick="closeHelplineFormModal()" class="w-full bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancel</button>
+            <button id="send-helpline-request-btn" class="w-full bg-mindsphere-purple text-white font-bold py-2 px-4 rounded-lg hover:bg-mindsphere-blue">Send Request</button>
+        </div>
+    </div>
+
+    <!-- Celebration Overlay -->
+    <div id="celebration-overlay" class="hidden fixed inset-0 z-[200] flex justify-center items-center text-mindsphere-purple text-center p-4 transition-opacity duration-300 pointer-events-none">
+        <div id="celebration-content" class="pointer-events-auto"></div>
+    </div>
+
+    <!-- Chatbot FAB -->
+    <button id="chatbot-fab" class="fixed bottom-8 right-8 z-30 bg-mindsphere-purple text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center transition-transform duration-300 ease-in-out hover:scale-110">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clip-rule="evenodd" />
+        </svg>
+    </button>
+
+    <!-- Chatbot Modal -->
+    <div id="chatbot-modal" class="bg-white rounded-2xl shadow-xl flex flex-col dark:bg-gray-800">
+        <header class="bg-mindsphere-purple text-white p-4 rounded-t-2xl flex justify-between items-center">
+            <h2 class="text-lg font-bold" data-lang-key="chatbot_title">MindSphere Assistant</h2>
+            <button id="close-chatbot-btn" class="text-2xl">&times;</button>
+        </header>
+        <div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto">
+            <!-- Messages will be injected here -->
+        </div>
+        <div class="p-4 border-t dark:border-gray-700 space-y-2">
+             <button id="chatbot-report-btn" class="w-full flex items-center justify-center gap-2 bg-mindsphere-purple text-white font-bold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-colors text-sm" data-lang-key="chatbot_generate_report">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" /></svg>
+                Generate Therapist Report
+            </button>
+            <div id="chatbot-report-actions" class="hidden grid grid-cols-2 gap-2">
+                 <button id="chatbot-copy-report-btn" class="w-full bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 text-sm" data-lang-key="chatbot_copy_report">Copy Report</button>
+                 <button id="chatbot-pdf-report-btn" class="w-full flex items-center justify-center gap-2 bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 text-sm" data-lang-key="chatbot_pdf_report">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    PDF
+                 </button>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="chat-input" class="flex-grow border-2 border-gray-300 rounded-lg p-2 focus:ring-2 ring-mindsphere-blue focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Type your message..." data-lang-key="chatbot_placeholder">
+                <button id="chat-send-btn" class="bg-mindsphere-blue text-white font-bold p-3 rounded-lg hover:bg-mindsphere-purple">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" /></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- POMODORO FULL PAGE -->
+    <div id="pomodoro-page" class="hidden fixed inset-0 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col justify-between p-4 overflow-hidden">
+        <div id="pomodoro-sky"></div>
+        <header class="flex justify-between items-center w-full max-w-6xl mx-auto z-10">
+            <button id="close-pomodoro-btn" class="text-2xl font-bold">&larr; Back</button>
+            <h1 id="pomodoro-mode-title" class="text-2xl font-bold">Pomodoro</h1>
+            <div class="relative">
+                <button id="pomodoro-settings-btn" class="p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+                <div id="pomodoro-settings-menu" class="hidden absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4 z-20 space-y-4">
+                    <h3 class="font-bold text-lg">Timer Settings</h3>
+                    <div class="grid grid-cols-3 gap-2 text-sm">
+                        <label for="pomo-duration">Pomodoro</label>
+                        <label for="short-break-duration">Short Break</label>
+                        <label for="long-break-duration">Long Break</label>
+                        <input id="pomo-duration" type="number" class="w-full p-1 border rounded bg-gray-100 dark:bg-gray-700" value="25">
+                        <input id="short-break-duration" type="number" class="w-full p-1 border rounded bg-gray-100 dark:bg-gray-700" value="5">
+                        <input id="long-break-duration" type="number" class="w-full p-1 border rounded bg-gray-100 dark:bg-gray-700" value="15">
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <label>Auto Start Breaks?</label>
+                        <input id="auto-start-breaks" type="checkbox" class="h-5 w-5 rounded">
+                    </div>
+                    <div class="flex justify-between items-center text-sm">
+                        <label>Auto Start Pomodoros?</label>
+                        <input id="auto-start-pomos" type="checkbox" class="h-5 w-5 rounded">
+                    </div>
+                     <div class="flex justify-between items-center text-sm">
+                        <label for="long-break-interval">Long Break Interval</label>
+                        <input id="long-break-interval" type="number" class="w-20 p-1 border rounded bg-gray-100 dark:bg-gray-700" value="4">
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 flex flex-col items-center justify-center space-y-4 z-10">
+            <div id="pomodoro-timer" class="text-8xl font-bold">25:00</div>
+            <p id="pomodoro-current-task" class="text-xl font-medium text-center"></p>
+            <div class="flex items-center gap-4">
+                <button id="pomodoro-start-pause-btn" class="bg-mindsphere-purple text-white font-bold py-3 px-10 rounded-lg text-2xl">START</button>
+                <button id="pomodoro-skip-btn" class="hidden p-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                </button>
+            </div>
+        </main>
+        
+        <aside class="w-full md:w-80 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-t-lg p-4 z-10 self-center">
+            <h2 class="font-bold mb-2">Today's Focus</h2>
+            <ul id="pomodoro-todo-list" class="space-y-2 max-h-24 overflow-y-auto"></ul>
+        </aside>
+
+        <footer id="pomodoro-path-container" class="w-full h-24 relative">
+            <!-- SVG path will be injected here -->
+        </footer>
+    </div>
+    
+
+    <script>
+        // --- DATA ---
+        const masters = [
+            { id: 1, name: 'Ghulam Ji', craft: 'Walnut Wood Carver', location: { top: '20%', left: '30%' }, img: 'https://placehold.co/150x150/5C4033/F5F5DC?text=G', story: 'A master carver with 40 years of experience, Ghulam Ji shapes dreams from walnut wood.' },
+            { id: 2, name: 'Fatima Bi', craft: 'Pashmina Weaver', location: { top: '50%', left: '65%' }, img: 'https://placehold.co/150x150/8A9A5B/FFFFFF?text=F', story: 'Fatima Bi weaves the softest pashmina, carrying on a tradition passed down through generations.' },
+            { id: 3, name: 'Hassan Saab', craft: 'Saffron Farmer', location: { top: '75%', left: '20%' }, img: 'https://placehold.co/150x150/F4C430/5C4033?text=H', story: 'Hassan Saab cultivates the world-renowned Kashmiri saffron with immense care and dedication.' }
+        ];
+        const encouragingQuotes = [
+            "Every step forward is a victory.",
+            "You're making wonderful progress.",
+            "One task down, one step closer to your goal.",
+            "Believe in yourself. You've got this.",
+            "Success is the sum of small efforts."
+        ];
+        const translations = {
+            en: {
+                header_title: 'MindSphere', header_subtitle: 'Your Space for Growth & Wellness', nav_home: 'Home', nav_events: 'Events and Meetups', nav_counsellors: 'Counsellors', nav_wellness_coach: 'Wellness Coach', nav_resources: 'Resource page', nav_chats: 'My chats', nav_join: 'Join us', dropdown_profile: 'Profile', dropdown_location: 'Location', dropdown_language_label: 'Language', dropdown_theme_label: 'Theme', profile_title: 'My Profile', profile_name: 'Name', profile_contact: 'Contact No.', profile_email: 'Email Id', profile_age: 'Age', profile_dob: 'Date of Birth', edit_button: 'Edit', save_button: 'Save', growth_path_title: 'My Growth Path', wellness_coach_button: 'Wellness Coach', tasks_title: "Today's Tasks", add_task_button: 'Add', add_task_placeholder: 'Add a new task...', dropdown_medical_history: 'Medical History', location_title: 'Update Your Location', location_button_current: 'Use My Current Location', location_address1_label: 'Address line 1', location_address2_label: 'Address line 2 (Optional)', location_city_label: 'City', location_state_label: 'State', location_pincode_label: 'Pincode', location_save_button: 'Save Location', location_fetching: 'Fetching location...', location_error: 'Could not fetch location. Please check permissions.', medical_history_title: 'Your Medical History', upload_label_1: 'Upload Document 1', upload_label_2: 'Upload Document 2', upload_label_3: 'Upload Document 3', context_placeholder: 'Add context for this document...', save_medical_history_button: 'Save Medical History', wellness_coach_placeholder: 'e.g., How to stop procrastinating?', wellness_coach_ask_button: 'Ask', generate_summary_button: 'Generate Problem Report', copy_report_button: 'Copy Report', report_copied_button: 'Copied!', close_button: 'Close', chatbot_title: 'Calmly', chatbot_placeholder: 'Type your message...', chatbot_greeting: "Hello! I'm Calmly, your MindSphere Assistant. How can I support you today?", chatbot_generate_report: "Generate Therapist Report", chatbot_copy_report: "Copy Report", chatbot_pdf_report: "Download PDF", chatbot_report_copied: "Copied!", footer_about_title: 'About Us', footer_about_text: 'We are a team of six B.Tech students dedicated to making mental health care accessible and affordable. Our platform integrates psychology with technology, offering therapy, support groups, and innovative tools. We strive to reduce barriers of cost and stigma while providing a safe, inclusive environment. Our vision is a world where mental well-being is recognized as a fundamental right for all.<br>Contact us: <a href="mailto:mindsphere213@gmail.com" class="text-mindsphere-blue hover:underline">mindsphere213@gmail.com</a>',
+            },
+            hi: {
+                header_title: 'माइंडस्फीयर', header_subtitle: 'विकास और कल्याण के लिए आपकी जगह', nav_home: 'होम', nav_events: 'इवेंट्स और मीटअप', nav_counsellors: 'परामर्शदाता', nav_wellness_coach: 'वेलनेस कोच', nav_resources: 'संसाधन पृष्ठ', nav_chats: 'मेरी चैट', nav_join: 'हमसे जुड़ें', dropdown_profile: 'प्रोफ़ाइल', dropdown_location: 'स्थान', dropdown_language_label: 'भाषा', dropdown_theme_label: 'थीम', profile_title: 'मेरी प्रोफ़ाइल', profile_name: 'नाम', profile_contact: 'संपर्क नंबर', profile_email: 'ईमेल आईडी', profile_age: 'आयु', profile_dob: 'जन्म तिथि', edit_button: 'संपादित करें', save_button: 'सहेजें', growth_path_title: 'मेरा विकास पथ', wellness_coach_button: 'वेलनेस कोच', tasks_title: 'आज के कार्य', add_task_button: 'जोड़ें', add_task_placeholder: 'एक नया कार्य जोड़ें...', dropdown_medical_history: 'चिकित्सा इतिहास', location_title: 'अपना स्थान अपडेट करें', location_button_current: 'मेरे वर्तमान स्थान का उपयोग करें', location_address1_label: 'पता पंक्ति 1', location_address2_label: 'पता पंक्ति 2 (वैकल्पिक)', location_city_label: 'शहर', location_state_label: 'राज्य', location_pincode_label: 'पिनकोड', location_save_button: 'स्थान सहेजें', location_fetching: 'स्थान प्राप्त किया जा रहा है...', location_error: 'स्थान प्राप्त नहीं किया जा सका। कृपया अनुमतियों की जाँच करें।', medical_history_title: 'आपका चिकित्सा इतिहास', upload_label_1: 'दस्तावेज़ 1 अपलोड करें', upload_label_2: 'दस्तावेज़ 2 अपलोड करें', upload_label_3: 'दस्तावेज़ 3 अपलोड करें', context_placeholder: 'इस दस्तावेज़ के लिए संदर्भ जोड़ें...', save_medical_history_button: 'चिकित्सा इतिहास सहेजें', wellness_coach_placeholder: 'जैसे, टालमटोल कैसे बंद करें?', wellness_coach_ask_button: 'पूछें', generate_summary_button: 'समस्या रिपोर्ट बनाएं', copy_report_button: 'रिपोर्ट कॉपी करें', report_copied_button: 'कॉपी किया गया!', close_button: 'बंद करें', chatbot_title: 'कामली', chatbot_placeholder: 'अपना संदेश लिखें...', chatbot_greeting: "नमस्ते! मैं कामली, आपका माइंडस्फीयर सहायक हूँ। आज मैं आपकी कैसे मदद कर सकता हूँ?", chatbot_generate_report: "चिकित्सक रिपोर्ट बनाएं", chatbot_copy_report: "रिपोर्ट कॉपी करें", chatbot_pdf_report: "पीडीएफ डाउनलोड करें", chatbot_report_copied: "कॉपी किया गया!", footer_about_title: 'हमारे बारे में', footer_about_text: 'हम छह बी.टेक छात्रों की एक टीम हैं जो मानसिक स्वास्थ्य देखभाल को सुलभ और सस्ता बनाने के लिए समर्पित हैं। हमारा मंच मनोविज्ञान को प्रौद्योगिकी के साथ एकीकृत करता है, जिसमें थेरेपी, सहायता समूह और नवीन उपकरण प्रदान किए जाते हैं। हम एक सुरक्षित, समावेशी वातावरण प्रदान करते हुए लागत और कलंक की बाधाओं को कम करने का प्रयास करते हैं। हमारी दृष्टि एक ऐसी दुनिया है जहां मानसिक कल्याण को सभी के लिए एक मौलिक अधिकार के रूप में मान्यता दी जाती है।<br>हमसे संपर्क करें: <a href="mailto:mindsphere213@gmail.com" class="text-mindsphere-blue hover:underline">mindsphere213@gmail.com</a>',
+            },
+            ks: {
+                header_title: 'مائنڈ سفیئر', header_subtitle: 'بڈن تہٕ فلاح خاطرٕ توٲر جاے', nav_home: 'گھر', nav_events: 'تقریب تہٕ ملاقات', nav_counsellors: 'مشیر', nav_wellness_coach: 'فلاح کوچ', nav_resources: 'وسیلہ صفحہ', nav_chats: 'مےٚ گپ شپ', nav_join: 'اسہٕ سیتۍ رلو', dropdown_profile: 'پروفائل', dropdown_location: 'مقام', dropdown_language_label: 'زبان', dropdown_theme_label: 'تھیم', profile_title: 'مےٚ پروفائل', profile_name: 'ناو', profile_contact: 'رابطہٕ نمبر', profile_email: 'ایمیل ای ڈی', profile_age: 'وٲنس', profile_dob: 'زایہِ دۄہ', edit_button: 'ترمیم', save_button: 'محفوظ', growth_path_title: 'مےٚ بڈنُک کُل', wellness_coach_button: 'فلاح کوچ', tasks_title: 'اَزکۍ کامہِ', add_task_button: 'رلاو', add_task_placeholder: 'اَکھ نٔو کام رلاو...', dropdown_medical_history: 'طبی تاریخ', location_title: 'پنُن مقام اپڈیٹ کریو', location_button_current: 'مےٚ موجودٕ مقام استعمال کریو', location_address1_label: 'پتہ 1', location_address2_label: 'پتہ 2 (اختیاری)', location_city_label: 'شہر', location_state_label: 'ریاست', location_pincode_label: 'پن کوڈ', location_save_button: 'مقام محفوظ کریو', location_fetching: 'مقام انان...', location_error: 'مقام ہیکہٕ نہٕ انِتھ۔ مہربانی کرِتھ اجازت وُچھو۔', medical_history_title: 'تُہندِ طبی تاریخ', upload_label_1: 'ڈاکومنٹ 1 اپلوڈ کریو', upload_label_2: 'ڈاکومنٹ 2 اپلوڈ کریو', upload_label_3: 'ڈاکومنٹ 3 اپلوڈ کریو', context_placeholder: 'اَتھ ڈاکومنٹَس باپتھ سیاق و سباق لکھِو...', save_medical_history_button: 'طبی تاریخ محفوظ کریو', wellness_coach_placeholder: 'مثال، چیز تاخیر کٔرُن کِتھ پٲٹھۍ رُکاوو؟', wellness_coach_ask_button: 'پُھچھو', generate_summary_button: 'مسئلہٕ رپورٹ بنایو', copy_report_button: 'رپورٹ کاپی کریو', report_copied_button: 'کاپی کُر!', close_button: 'بند کریو', chatbot_title: 'کاملی', chatbot_placeholder: 'پنُن پیغام لکھِو...', chatbot_greeting: "السلام علیکم! بہٕ چھُس کاملی, تُہند مائنڈ سفیئر اسسٹنٹ۔ بہٕ کیاہ کٔرِ ہیٚکِو اَز تُہٕنٛدِ مدد؟", chatbot_generate_report: "معالج رپورٹ بنایو", chatbot_copy_report: "رپورٹ کاپی کریو", chatbot_pdf_report: "پی ڈی ایف ڈاؤن لوڈ کریو", chatbot_report_copied: "کاپی کُر!", footer_about_title: 'اسہٕ متعلق', footer_about_text: 'اسہٕ چھِ شیہہ بی ٹیک طالب علمن ہنز اَکھ ٹیم یم ذہنی صحتٕچ دیکھ بھال قابل رسائی تہٕ سستی بناونس وقف چھِ۔ اسہٕ سُنٛد پلیٹ فارم چھُ نفسیاتس ٹیکنالوجی سٟتؠ یکجا کران، یَتھ مَنٛز تھراپی، سپورٹ گروپس، تہٕ جدید آلات پیش چھِ یوان کرنہٕ۔ اسہٕ کوشش کران چھِ قۭمت تہٕ بدنامی ہنٛز رُکاوٹہٕ کم کرنٕچ ییٚلِہ زن اَکھ محفوظ، جامع ماحول فراہم کران چھِ۔ اسہٕ سُنٛد وژن چھُ اَکھ یِژھ دُنیا ییٚتہٕ ذہنی بہبود سبھنی خٲطرٕ اَکھ بُنیٲدی حق تسلیم چھُ یوان کرنہٕ۔<br>رابطہٕ کریو: <a href="mailto:mindsphere213@gmail.com" class="text-mindsphere-blue hover:underline">mindsphere213@gmail.com</a>',
+            }
+        };
+        
+        let tasks = []; // Array to hold task objects {id, text, completed, element, pathElement}
+
+        // --- DOM ELEMENTS ---
+        const dom = {
+            masterModal: { backdrop: document.getElementById('master-modal-backdrop'), content: document.getElementById('master-modal-content') },
+            sosModal: { btn: document.getElementById('sos-btn'), backdrop: document.getElementById('sos-modal-backdrop'), content: document.getElementById('sos-modal-content') },
+            helplineFormModal: {
+                backdrop: document.getElementById('helpline-form-modal-backdrop'),
+                content: document.getElementById('helpline-form-modal-content'),
+                numberInput: document.getElementById('helpline-number'),
+                sendBtn: document.getElementById('send-helpline-request-btn'),
+                status: document.getElementById('helpline-form-status'),
+                callBtn: document.getElementById('call-helpline-btn')
+            },
+            todo: { input: document.getElementById('todo-input'), addBtn: document.getElementById('add-todo-btn'), list: document.getElementById('todo-list') },
+            growthPath: { container: document.getElementById('growth-path-container') },
+            celebration: { overlay: document.getElementById('celebration-overlay'), content: document.getElementById('celebration-content')},
+            confetti: document.getElementById('confetti-container'),
+            quote: { text: document.getElementById('quote-text'), author: document.getElementById('quote-author'), btn: document.getElementById('generate-quote-btn') },
+            wellnessCoach: { 
+                prompt: document.getElementById('wellness-coach-prompt'), 
+                askBtn: document.getElementById('wellness-coach-ask-btn'), 
+                response: document.getElementById('wellness-coach-response'),
+                summaryBtn: document.getElementById('wellness-coach-summary-btn'),
+                copyBtn: document.getElementById('wellness-coach-copy-btn')
+            },
+            avatar: { button: document.getElementById('avatar-button'), dropdown: document.getElementById('avatar-dropdown') },
+            location: { btn: document.getElementById('get-location-btn'), output: document.getElementById('location-output'), addressInput: document.getElementById('address-1-input') },
+            chats: {
+                dmList: document.getElementById('dm-list'),
+                groupList: document.getElementById('group-list'),
+                header: document.getElementById('chat-header'),
+                messagesArea: document.getElementById('chat-messages-area'),
+                groupNote: document.getElementById('group-note')
+            },
+            chatbot: {
+                fab: document.getElementById('chatbot-fab'),
+                modal: document.getElementById('chatbot-modal'),
+                closeBtn: document.getElementById('close-chatbot-btn'),
+                messages: document.getElementById('chat-messages'),
+                input: document.getElementById('chat-input'),
+                sendBtn: document.getElementById('chat-send-btn'),
+                reportBtn: document.getElementById('chatbot-report-btn'),
+                reportActions: document.getElementById('chatbot-report-actions'),
+                copyReportBtn: document.getElementById('chatbot-copy-report-btn'),
+                pdfReportBtn: document.getElementById('chatbot-pdf-report-btn')
+            },
+            pomodoro: {
+                page: document.getElementById('pomodoro-page'),
+                sky: document.getElementById('pomodoro-sky'),
+                openBtn: document.getElementById('open-pomodoro-btn'),
+                closeBtn: document.getElementById('close-pomodoro-btn'),
+                settingsBtn: document.getElementById('pomodoro-settings-btn'),
+                settingsMenu: document.getElementById('pomodoro-settings-menu'),
+                modeTitle: document.getElementById('pomodoro-mode-title'),
+                timer: document.getElementById('pomodoro-timer'),
+                currentTask: document.getElementById('pomodoro-current-task'),
+                startPauseBtn: document.getElementById('pomodoro-start-pause-btn'),
+                skipBtn: document.getElementById('pomodoro-skip-btn'),
+                todoList: document.getElementById('pomodoro-todo-list'),
+                pathContainer: document.getElementById('pomodoro-path-container'),
+                inputs: {
+                    pomo: document.getElementById('pomo-duration'),
+                    short: document.getElementById('short-break-duration'),
+                    long: document.getElementById('long-break-duration'),
+                    autoBreaks: document.getElementById('auto-start-breaks'),
+                    autoPomos: document.getElementById('auto-start-pomos'),
+                    interval: document.getElementById('long-break-interval'),
+                }
+            }
+        };
+
+        // --- SIMULATED GEMINI API ---
+        async function callGemini(prompt, delay = 1500) {
+            console.log("Calling Gemini with prompt:", prompt);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            if (prompt.includes("affirmation")) {
+                const quotes = [
+                    { "quote": "हर छोटा बदलाव बड़ी कामयाबी का हिस्सा होता है।", "author": "An Affirmation" },
+                    { "quote": "The secret of getting ahead is getting started.", "author": "Mark Twain" },
+                    { "quote": "It does not matter how slowly you go as long as you do not stop.", "author": "Confucius" }
+                ];
+                return JSON.stringify(quotes[Math.floor(Math.random() * quotes.length)]);
+            }
+            if (prompt.includes("Break down")) {
+                return `["Review the syllabus and prioritize topics.", "Spend 25 minutes on one topic, then take a 5-minute break.", "Explain what you learned to a friend or write a summary."]`
+            }
+             if (prompt.includes("therapist report")) {
+                return `**Session Summary for Therapist**\n\n**Key Concerns Mentioned:**\n- User expressed feelings of being overwhelmed with academic pressure and upcoming exams.\n- Procrastination was identified as a significant challenge, leading to increased stress.\n- User is seeking practical strategies for stress management and improving focus.\n\n**Potential Discussion Points:**\n- Exploration of underlying causes of procrastination.\n- Introduction to time management techniques (e.g., Pomodoro, task batching).\n- Discussion of mindfulness and relaxation exercises to manage acute stress.`;
+            }
+            if (prompt.includes("wellness coach")) {
+                return `Procrastination often comes from feeling overwhelmed. Try the '5-Minute Rule': just start the task for 5 minutes. Often, that's enough to build momentum. Be kind to yourself; every small step forward is a victory.`;
+            }
+             if (prompt.toLowerCase().includes('hello') || prompt.toLowerCase().includes('hi')) {
+                return "Hello there! How can I assist you with your wellness journey today?";
+            }
+            if (prompt.toLowerCase().includes('help')) {
+                return "I can help you with a few things! You can ask me for affirmations, information about our counsellors, or just chat if you need to talk. What's on your mind?";
+            }
+            return "I'm here to listen. Tell me more about what's going on.";
+        }
+
+
+        // --- CHAT DATA ---
+        const chatData = {
+            rita: {
+                type: 'dm',
+                name: 'Rita',
+                avatar: 'https://placehold.co/40x40/FFC0CB/000000?text=R',
+                status: 'Online',
+                messagesHTML: `
+                    <div class="flex justify-start"><div class="bg-gray-200 dark:bg-gray-700 p-3 rounded-lg max-w-xs break-words"><p>Hey! Are we still on for the meetup tomorrow?</p></div></div>
+                    <div class="flex justify-end"><div class="bg-mindsphere-blue text-white p-3 rounded-lg max-w-xs break-words"><p>Absolutely! Looking forward to it. Same time, same place?</p></div></div>
+                    <div class="flex justify-start"><div class="bg-gray-200 dark:bg-gray-700 p-3 rounded-lg max-w-xs break-words"><p>Sounds like a plan! See you then.</p></div></div>`
+            },
+            rohan: {
+                type: 'dm',
+                name: 'Rohan',
+                avatar: 'https://placehold.co/40x40/ADD8E6/000000?text=R',
+                status: 'Offline',
+                messagesHTML: `
+                    <div class="flex justify-start"><div class="bg-gray-200 dark:bg-gray-700 p-3 rounded-lg max-w-xs break-words"><p>Can you send me the notes from the last session?</p></div></div>`
+            },
+            'group-adhd': {
+                type: 'group',
+                name: 'ADHD',
+                avatarIcon: `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-mindsphere-purple" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>`,
+                status: '8 Members',
+                messagesHTML: `
+                    <div class="flex justify-start"><div class="bg-gray-200 dark:bg-gray-700 p-3 rounded-lg max-w-xs break-words"><strong class="text-xs text-purple-600 dark:text-purple-400 block mb-1">Anonymous User</strong><p>Does anyone have tips for staying focused while studying?</p></div></div>
+                    <div class="flex justify-end"><div class="bg-mindsphere-blue text-white p-3 rounded-lg max-w-xs break-words"><p>I find the Pomodoro technique really helpful! 25 mins of work, 5 mins break.</p></div></div>
+                    <div class="flex justify-start"><div class="bg-gray-200 dark:bg-gray-700 p-3 rounded-lg max-w-xs break-words"><strong class="text-xs text-green-600 dark:text-green-400 block mb-1">Another User</strong><p>That's a good one! Also, noise-cancelling headphones are a game-changer.</p></div></div>`
+            }
+        };
+        
+        // --- POMODORO LOGIC ---
+        const pomodoro = {
+            timerId: null,
+            mode: 'pomodoro', // 'pomodoro', 'shortBreak', 'longBreak'
+            pomodoros: 0,
+            remainingTime: 25 * 60,
+            isRunning: false,
+            settings: {
+                pomo: 25,
+                short: 5,
+                long: 15,
+                autoBreaks: false,
+                autoPomos: false,
+                interval: 4,
+            },
+            
+            start() {
+                this.isRunning = true;
+                dom.pomodoro.startPauseBtn.textContent = 'PAUSE';
+                dom.pomodoro.skipBtn.classList.remove('hidden');
+                this.timerId = setInterval(() => {
+                    this.remainingTime--;
+                    this.updateDisplay();
+                    updateStickManPosition();
+                    if (this.remainingTime < 0) {
+                        this.stop();
+                        this.switchMode();
+                    }
+                }, 1000);
+                 updatePomodoroPathVisibility(true);
+            },
+            
+            pause() {
+                this.isRunning = false;
+                dom.pomodoro.startPauseBtn.textContent = 'START';
+                dom.pomodoro.skipBtn.classList.add('hidden');
+                clearInterval(this.timerId);
+                this.timerId = null;
+                 updatePomodoroPathVisibility(false);
+            },
+            
+            stop() {
+                this.pause();
+            },
+            
+            reset() {
+                this.pause();
+                this.pomodoros = 0;
+                this.setMode('pomodoro');
+            },
+
+            setMode(newMode) {
+                this.mode = newMode;
+                this.remainingTime = this.settings[this.mode === 'pomodoro' ? 'pomo' : (this.mode === 'shortBreak' ? 'short' : 'long')] * 60;
+                this.updateDisplay();
+
+                const titles = { pomodoro: 'Pomodoro', shortBreak: 'Short Break', longBreak: 'Long Break' };
+                dom.pomodoro.modeTitle.textContent = titles[this.mode];
+            },
+
+            switchMode() {
+                if (this.mode === 'pomodoro') {
+                    this.pomodoros++;
+                    if (this.pomodoros % this.settings.interval === 0) {
+                        this.setMode('longBreak');
+                    } else {
+                        this.setMode('shortBreak');
+                    }
+                    if (this.settings.autoBreaks) this.start();
+                } else {
+                    this.setMode('pomodoro');
+                    if (this.settings.autoPomos) this.start();
+                }
+            },
+
+            updateDisplay() {
+                const minutes = Math.floor(this.remainingTime / 60).toString().padStart(2, '0');
+                const seconds = (this.remainingTime % 60).toString().padStart(2, '0');
+                dom.pomodoro.timer.textContent = `${minutes}:${seconds}`;
+            },
+
+            handleStartPause() {
+                this.isRunning ? this.pause() : this.start();
+            },
+
+            handleSkip() {
+                this.stop();
+                this.switchMode();
+            },
+
+            applySettings() {
+                this.settings.pomo = parseInt(dom.pomodoro.inputs.pomo.value) || 25;
+                this.settings.short = parseInt(dom.pomodoro.inputs.short.value) || 5;
+                this.settings.long = parseInt(dom.pomodoro.inputs.long.value) || 15;
+                this.settings.interval = parseInt(dom.pomodoro.inputs.interval.value) || 4;
+                this.settings.autoBreaks = dom.pomodoro.inputs.autoBreaks.checked;
+                this.settings.autoPomos = dom.pomodoro.inputs.autoPomos.checked;
+                
+                if(!this.isRunning) {
+                   this.setMode(this.mode); // re-apply time for current mode if not running
+                }
+            }
+        };
+
+
+        // --- FUNCTIONS ---
+        function renderMasters() {
+            const mapContainer = document.getElementById('map');
+            mapContainer.innerHTML = ''; 
+            masters.forEach(master => {
+                const pin = document.createElement('div');
+                pin.className = 'master-pin';
+                pin.style.top = master.location.top;
+                pin.style.left = master.location.left;
+                
+                const img = document.createElement('img');
+                img.src = master.img;
+                img.alt = master.name;
+                pin.appendChild(img);
+                
+                pin.addEventListener('click', () => openMasterModal(master.id));
+                
+                mapContainer.appendChild(pin);
+            });
+        }
+
+        function openMasterModal(id) {
+            const master = masters.find(m => m.id === id);
+            if (!master) return;
+            dom.masterModal.content.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-4">
+                        <img src="${master.img}" alt="${master.name}" class="w-20 h-20 rounded-full border-4 border-mindsphere-blue">
+                        <div>
+                            <h2 class="text-2xl font-bold text-mindsphere-purple">${master.name}</h2>
+                            <p class="text-mindsphere-gray font-medium">${master.craft}</p>
+                        </div>
+                    </div>
+                    <button onclick="closeMasterModal()" class="text-gray-400 hover:text-gray-600 text-3xl">&times;</button>
+                </div>
+                <p class="text-gray-600 my-4">${master.story}</p>
+                <button class="w-full bg-mindsphere-purple text-white font-bold py-2 px-4 rounded-lg hover:bg-mindsphere-blue transition-colors">Request to Learn</button>
+            `;
+            dom.masterModal.backdrop.classList.add('active');
+            dom.masterModal.content.classList.add('active');
+        }
+
+        function closeMasterModal() {
+            dom.masterModal.backdrop.classList.remove('active');
+            dom.masterModal.content.classList.remove('active');
+        }
+        
+        function openSosModal() { dom.sosModal.backdrop.classList.add('active'); dom.sosModal.content.classList.add('active'); }
+        function closeSosModal() { dom.sosModal.backdrop.classList.remove('active'); dom.sosModal.content.classList.remove('active'); }
+
+        function openHelplineFormModal() {
+            dom.helplineFormModal.backdrop.classList.add('active');
+            dom.helplineFormModal.content.classList.add('active');
+        }
+        function closeHelplineFormModal() {
+            dom.helplineFormModal.backdrop.classList.remove('active');
+            dom.helplineFormModal.content.classList.remove('active');
+            // Clear fields after closing
+            dom.helplineFormModal.numberInput.value = '';
+            dom.helplineFormModal.status.textContent = '';
+        }
+
+        async function generateAffirmation() {
+            dom.quote.text.textContent = 'Generating a fresh thought...';
+            dom.quote.author.textContent = '';
+            const geminiResponse = await callGemini("Generate a short, uplifting affirmation for a student.");
+            const { quote, author } = JSON.parse(geminiResponse);
+            dom.quote.text.textContent = `"${quote}"`;
+            dom.quote.author.textContent = `- ${author}`;
+        }
+
+        async function breakdownTask(taskItem, taskText) {
+            const breakdownBtn = taskItem.querySelector('.breakdown-btn');
+            breakdownBtn.innerHTML = '<div class="spinner"></div>';
+            const geminiResponse = await callGemini(`Break down this task: "${taskText}"`);
+            const subTasks = JSON.parse(geminiResponse);
+            
+            const subList = document.createElement('ul');
+            subList.className = 'sub-task-list';
+            subList.innerHTML = subTasks.map(st => `<li class="sub-task-item">- ${st}</li>`).join('');
+            
+            taskItem.appendChild(subList);
+            breakdownBtn.remove();
+        }
+
+        async function askWellnessCoach() {
+            const prompt = dom.wellnessCoach.prompt.value.trim();
+            if (!prompt) return;
+            dom.wellnessCoach.response.innerHTML = '<div class="flex justify-center items-center h-full"><div class="spinner"></div></div>';
+            dom.wellnessCoach.copyBtn.classList.add('hidden');
+            const geminiResponse = await callGemini(`Act as a wellness coach for a student who asked: "${prompt}"`);
+            dom.wellnessCoach.response.textContent = geminiResponse;
+            dom.wellnessCoach.prompt.value = '';
+        }
+
+        async function generateTherapistReport() {
+            dom.wellnessCoach.response.innerHTML = '<div class="flex justify-center items-center h-full"><div class="spinner"></div></div>';
+            dom.wellnessCoach.copyBtn.classList.add('hidden');
+            const geminiResponse = await callGemini("Generate a therapist report based on our conversation.");
+            const formattedResponse = geminiResponse
+                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-mindsphere-purple">$1</strong>')
+                .replace(/\n/g, '<br>');
+            dom.wellnessCoach.response.innerHTML = formattedResponse;
+            dom.wellnessCoach.copyBtn.classList.remove('hidden');
+            
+            const lang = document.documentElement.lang || 'en';
+            dom.wellnessCoach.copyBtn.textContent = translations[lang].copy_report_button || 'Copy Report';
+        }
+
+        function copyReportToClipboard() {
+            const reportText = dom.wellnessCoach.response.innerText;
+            const lang = document.documentElement.lang || 'en';
+
+            const textArea = document.createElement("textarea");
+            textArea.value = reportText;
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    dom.wellnessCoach.copyBtn.textContent = translations[lang].report_copied_button || 'Copied!';
+                    setTimeout(() => {
+                        dom.wellnessCoach.copyBtn.textContent = translations[lang].copy_report_button || 'Copy Report';
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error('Fallback: Unable to copy', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function sendHelplineRequest() {
+            const number = dom.helplineFormModal.numberInput.value.trim();
+
+            if (!number) {
+                dom.helplineFormModal.status.textContent = 'Please enter your mobile number.';
+                dom.helplineFormModal.status.classList.remove('text-green-600');
+                dom.helplineFormModal.status.classList.add('text-red-600');
+                return;
+            }
+
+            const email = 'expe.moii@gmail.com';
+            const subject = 'SOS Alert from MindSphere User';
+            const body = `A user requires urgent assistance.\n\nMobile Number: ${number}`;
+            const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            window.location.href = mailtoLink;
+
+            dom.helplineFormModal.status.textContent = 'Redirecting to your email app...';
+            dom.helplineFormModal.status.classList.add('text-green-600');
+            dom.helplineFormModal.status.classList.remove('text-red-600');
+
+            setTimeout(() => {
+                closeHelplineFormModal();
+            }, 2500);
+        }
+
+        function addTodo() {
+            const taskText = dom.todo.input.value.trim();
+            if (taskText === '') return;
+            const taskId = Date.now();
+            
+            const li = document.createElement('li');
+            li.className = 'bg-gray-100 dark:bg-gray-800 p-2 rounded-lg';
+            li.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" class="h-5 w-5 rounded border-gray-300 text-mindsphere-blue focus:ring-mindsphere-blue">
+                        <span class="text-gray-700 dark:text-gray-300">${taskText}</span>
+                    </div>
+                    <div>
+                        <button class="breakdown-btn text-mindsphere-gray hover:text-mindsphere-purple text-xs font-bold" title="Break down this task">✨ Plan</button>
+                        <button class="remove-btn text-gray-400 hover:text-red-500 ml-2 font-bold">&times;</button>
+                    </div>
+                </div>`;
+            
+            const task = {
+                id: taskId,
+                text: taskText,
+                completed: false,
+                element: li
+            };
+
+            const checkbox = li.querySelector('input[type="checkbox"]');
+            checkbox.addEventListener('change', () => handleTaskCompletion(task, 'main'));
+
+            li.querySelector('.remove-btn').addEventListener('click', () => {
+                tasks = tasks.filter(t => t.id !== taskId);
+                li.remove();
+                redrawGrowthPath();
+                updatePomodoroDisplay();
+            });
+
+            li.querySelector('.breakdown-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                breakdownTask(li, taskText);
+            });
+
+            tasks.push(task);
+            dom.todo.list.appendChild(li);
+            dom.todo.input.value = '';
+            redrawGrowthPath();
+            updatePomodoroDisplay();
+        }
+        
+        function handleTaskCompletion(task, source) {
+            const mainCheckbox = task.element.querySelector('input[type="checkbox"]');
+            const pomoCheckbox = task.pomoElement ? task.pomoElement.querySelector('input[type="checkbox"]') : null;
+
+            task.completed = true;
+            
+            task.element.querySelector('span').classList.add('line-through', 'text-gray-400');
+            mainCheckbox.checked = true;
+            mainCheckbox.disabled = true;
+
+            if (pomoCheckbox) {
+                pomoCheckbox.checked = true;
+                pomoCheckbox.disabled = true;
+                 task.pomoElement.querySelector('span').classList.add('line-through', 'text-gray-400');
+            }
+
+            drawFlagOnPath(task);
+            
+            if (source === 'pomo') {
+                triggerFireworkAtFlag(task.pomoPathElement);
+            }
+
+            checkAllTasksCompleted(source);
+        }
+
+        function checkAllTasksCompleted(source) {
+            const uncompletedTasks = tasks.filter(t => !t.completed);
+            if (tasks.length > 0 && uncompletedTasks.length === 0) {
+                 if (source === 'pomo') {
+                     triggerFinalFireworks();
+                 }
+            } else {
+                 if (pomodoro.isRunning && pomodoro.mode === 'pomodoro') {
+                    dom.pomodoro.currentTask.textContent = `Focusing on: ${uncompletedTasks[0].text}`;
+                }
+            }
+        }
+        
+        // --- POMODORO DISPLAY & PATH FUNCTIONS ---
+        function openPomodoroPage() {
+            dom.pomodoro.page.classList.remove('hidden');
+            document.getElementById('main-content-wrapper').classList.add('hidden');
+            pomodoro.reset();
+            updatePomodoroDisplay();
+            drawPomodoroPath();
+            createSky();
+        }
+
+        function closePomodoroPage() {
+            dom.pomodoro.page.classList.add('hidden');
+            document.getElementById('main-content-wrapper').classList.remove('hidden');
+            pomodoro.stop();
+        }
+
+        function updatePomodoroDisplay() {
+            dom.pomodoro.todoList.innerHTML = '';
+            const uncompletedTasks = tasks.filter(t => !t.completed);
+
+            if (uncompletedTasks.length > 0) {
+                dom.pomodoro.currentTask.textContent = `Focusing on: ${uncompletedTasks[0].text}`;
+            } else {
+                dom.pomodoro.currentTask.textContent = `All tasks completed! Great job!`;
+            }
+
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center gap-2';
+                li.innerHTML = `
+                    <input type="checkbox" id="pomo-task-${task.id}" class="h-4 w-4" ${task.completed ? 'checked disabled' : ''}>
+                    <span class="${task.completed ? 'line-through text-gray-400' : ''}">${task.text}</span>
+                `;
+                li.querySelector('input').addEventListener('change', () => {
+                    handleTaskCompletion(task, 'pomo');
+                });
+                task.pomoElement = li;
+                dom.pomodoro.todoList.appendChild(li);
+            });
+            pomodoro.updateDisplay();
+        }
+
+        function drawPomodoroPath() {
+            const container = dom.pomodoro.pathContainer;
+            container.innerHTML = '';
+            const uncompletedTasks = tasks.filter(t => !t.completed);
+            if (uncompletedTasks.length === 0) return;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute('viewBox', `0 0 ${uncompletedTasks.length * 200 + 200} 100`);
+            svg.setAttribute('preserveAspectRatio', 'xMinYMax meet');
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            container.appendChild(svg);
+
+            const path = document.createElementNS(svgNS, 'path');
+            let pathD = "M 50 50 ";
+            uncompletedTasks.forEach((_, i) => {
+                pathD += `L ${i * 200 + 250} 50 `;
+            });
+            path.setAttribute('d', pathD);
+            path.setAttribute('stroke', '#A5B4FC');
+            path.setAttribute('stroke-width', '4');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-dasharray', '8 8');
+            path.setAttribute('id', 'pomo-walking-path');
+            svg.appendChild(path);
+
+            uncompletedTasks.forEach((task, i) => {
+                const g = document.createElementNS(svgNS, 'g');
+                
+                const flagPole = document.createElementNS(svgNS, 'line');
+                flagPole.setAttribute('x1', i * 200 + 250);
+                flagPole.setAttribute('y1', 50);
+                flagPole.setAttribute('x2', i * 200 + 250);
+                flagPole.setAttribute('y2', 20);
+                flagPole.setAttribute('stroke', '#64748B');
+                flagPole.setAttribute('stroke-width', '2');
+                g.appendChild(flagPole);
+
+                const flag = document.createElementNS(svgNS, 'polygon');
+                flag.setAttribute('points', `${i * 200 + 250},20 ${i * 200 + 270},25 ${i * 200 + 250},30`);
+                flag.setAttribute('fill', '#F4C430');
+                g.appendChild(flag);
+
+                task.pomoPathElement = g;
+                svg.appendChild(g);
+            });
+
+            // Mountains at the end
+            const mountainPath = document.createElementNS(svgNS, 'path');
+            const endX = (uncompletedTasks.length -1) * 200 + 250;
+            mountainPath.setAttribute('d', `M ${endX + 50} 50 L ${endX + 100} 20 L ${endX + 120} 35 L ${endX + 150} 10 L ${endX + 200} 50 Z`);
+            mountainPath.setAttribute('fill', '#a0aec0');
+            svg.appendChild(mountainPath);
+
+             // Stick Man
+            const stickMan = document.createElementNS(svgNS, 'g');
+            stickMan.id = 'stick-man';
+            stickMan.innerHTML = `
+                <circle cx="0" cy="-25" r="8" fill="#4A5568" />
+                <line x1="0" y1="-17" x2="0" y2="5" stroke="#4A5568" stroke-width="4" />
+                <line x1="0" y1="-10" x2="-15" y2="0" stroke="#4A5568" stroke-width="4" />
+                <line x1="0" y1="-10" x2="15" y2="0" stroke="#4A5568" stroke-width="4" />
+                <line x1="0" y1="5" x2="-10" y2="20" stroke="#4A5568" stroke-width="4" />
+                <line x1="0" y1="5" x2="10" y2="20" stroke="#4A5568" stroke-width="4" />
+            `;
+            const startPoint = path.getPointAtLength(0);
+            stickMan.setAttribute('transform', `translate(${startPoint.x}, ${startPoint.y})`);
+            svg.appendChild(stickMan);
+            updatePomodoroPathVisibility(false);
+        }
+        
+        function updatePomodoroPathVisibility(isRunning) {
+            const svg = dom.pomodoro.pathContainer.querySelector('svg');
+            if (!svg) return;
+            const uncompletedTasks = tasks.filter(t => !t.completed);
+            
+            svg.querySelectorAll('g').forEach((el, index) => {
+                 if (el.id === 'stick-man') return;
+                // The last element is the mountain, always show it.
+                if (index >= uncompletedTasks.length) return;
+                
+                if(isRunning) {
+                   el.style.opacity = index === pomodoro.pomodoros % uncompletedTasks.length ? '1' : '0';
+                } else {
+                    el.style.opacity = '1';
+                }
+            });
+        }
+        
+        function updateStickManPosition() {
+            const path = document.getElementById('pomo-walking-path');
+            if (!path) return;
+            const uncompletedTasks = tasks.filter(t => !t.completed);
+            if(uncompletedTasks.length === 0) return;
+
+            const stickMan = document.getElementById('stick-man');
+            const totalDuration = pomodoro.settings[pomodoro.mode === 'pomodoro' ? 'pomo' : (pomodoro.mode === 'shortBreak' ? 'short' : 'long')] * 60;
+            const elapsedTime = totalDuration - pomodoro.remainingTime;
+            const progress = elapsedTime / totalDuration;
+            
+            const currentTaskIndex = pomodoro.pomodoros % uncompletedTasks.length;
+            const pathSegmentLength = 200;
+            const startDistance = currentTaskIndex > 0 ? (currentTaskIndex - 1) * pathSegmentLength + pathSegmentLength / 2 : 0;
+            const endDistance = currentTaskIndex * pathSegmentLength + pathSegmentLength / 2;
+
+            const totalPathLength = path.getTotalLength();
+            const startPoint = path.getPointAtLength(Math.min(totalPathLength, (currentTaskIndex) * 200));
+            const endPoint = path.getPointAtLength(Math.min(totalPathLength, (currentTaskIndex + 1) * 200));
+
+            const currentX = startPoint.x + (endPoint.x - startPoint.x) * progress;
+            const currentY = startPoint.y + (endPoint.y - startPoint.y) * progress;
+
+            stickMan.setAttribute('transform', `translate(${currentX}, ${currentY})`);
+        }
+
+        function createSky() {
+            dom.pomodoro.sky.innerHTML = '';
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                // Moon and stars
+                const moon = document.createElement('div');
+                moon.className = 'moon';
+                moon.style.top = '10%';
+                moon.style.left = '80%';
+                dom.pomodoro.sky.appendChild(moon);
+                for (let i = 0; i < 50; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    const size = Math.random() * 3 + 1;
+                    star.style.width = `${size}px`;
+                    star.style.height = `${size}px`;
+                    star.style.top = `${Math.random() * 100}%`;
+                    star.style.left = `${Math.random() * 100}%`;
+                    dom.pomodoro.sky.appendChild(star);
+                }
+            } else {
+                // Clouds
+                for (let i = 0; i < 5; i++) {
+                    const cloud = document.createElement('div');
+                    cloud.className = 'cloud';
+                    const size = Math.random() * 100 + 50;
+                    cloud.style.width = `${size}px`;
+                    cloud.style.height = `${size / 2}px`;
+                    cloud.style.top = `${Math.random() * 60}%`;
+                    cloud.style.animation = `move-cloud ${Math.random() * 30 + 20}s linear infinite alternate`;
+                    dom.pomodoro.sky.appendChild(cloud);
+                }
+            }
+        }
+        
+        function triggerFireworkAtFlag(flagElement) {
+            if (!flagElement) return;
+            const flagPolygon = flagElement.querySelector('polygon');
+            const points = flagPolygon.points;
+            const x = points[0].x;
+            const y = points[0].y;
+
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'firework';
+                particle.style.background = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                const size = Math.random() * 6 + 2;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                const angle = Math.random() * 360;
+                const distance = Math.random() * 50 + 20;
+                particle.style.transform = `rotate(${angle}deg) translateX(${distance}px) scale(1)`;
+                particle.style.animation = `firework-explode 1s ease-out forwards`;
+                dom.pomodoro.pathContainer.appendChild(particle);
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+        
+        function triggerFinalFireworks() {
+             const uncompletedTasks = tasks.filter(t => !t.completed);
+             const endX = (uncompletedTasks.length) * 200 + 150;
+             const fireworkInterval = setInterval(() => {
+                for (let i = 0; i < 5; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'firework';
+                    particle.style.background = `hsl(${Math.random() * 360}, 100%, 70%)`;
+                    const size = Math.random() * 8 + 4;
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    particle.style.left = `${endX + Math.random() * 100}px`;
+                    particle.style.top = `${Math.random() * 40}px`;
+                    particle.style.animation = `firework-explode ${Math.random() * 1 + 0.5}s ease-out forwards`;
+                    dom.pomodoro.pathContainer.appendChild(particle);
+                    setTimeout(() => particle.remove(), 2000);
+                }
+            }, 300);
+
+            setTimeout(() => clearInterval(fireworkInterval), 5000);
+        }
+
+        function redrawGrowthPath() {
+            const container = dom.growthPath.container;
+            container.innerHTML = '';
+            if (tasks.length === 0) return;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute('viewBox', '0 0 300 100');
+            svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+
+            const path = document.createElementNS(svgNS, 'path');
+            const pathD = "M 20 80 C 80 20, 150 20, 220 80 S 280 120, 280 80";
+            path.setAttribute('d', pathD);
+            path.setAttribute('stroke', '#A5B4FC');
+            path.setAttribute('stroke-width', '3');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke-dasharray', '5 5');
+            svg.appendChild(path);
+
+            const pathLength = path.getTotalLength();
+
+            tasks.forEach((task, index) => {
+                const distance = (pathLength / (tasks.length + 1)) * (index + 1);
+                const point = path.getPointAtLength(distance);
+                
+                const g = document.createElementNS(svgNS, 'g');
+                
+                const circle = document.createElementNS(svgNS, 'circle');
+                circle.setAttribute('cx', point.x);
+                circle.setAttribute('cy', point.y);
+                circle.setAttribute('r', '6');
+                circle.setAttribute('fill', '#6366F1');
+                circle.setAttribute('stroke', 'white');
+                circle.setAttribute('stroke-width', '2');
+                g.appendChild(circle);
+                
+                task.pathElement = g;
+                svg.appendChild(g);
+
+                if (task.completed) {
+                    drawFlagOnPath(task);
+                }
+            });
+
+            container.appendChild(svg);
+        }
+
+        function drawFlagOnPath(task) {
+            if (!task.pathElement) return;
+            // Prevent drawing multiple flags
+            if (task.pathElement.querySelector('.task-flag')) return;
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const point = {
+                x: parseFloat(task.pathElement.querySelector('circle').getAttribute('cx')),
+                y: parseFloat(task.pathElement.querySelector('circle').getAttribute('cy'))
+            };
+
+            const flag = document.createElementNS(svgNS, 'polygon');
+            const flagPoints = `${point.x},${point.y-8} ${point.x+12},${point.y-14} ${point.x},${point.y-20}`;
+            flag.setAttribute('points', flagPoints);
+            flag.setAttribute('fill', '#F4C430');
+            flag.classList.add('task-flag');
+            
+            const pole = document.createElementNS(svgNS, 'line');
+            pole.setAttribute('x1', point.x);
+            pole.setAttribute('y1', point.y-8);
+            pole.setAttribute('x2', point.x);
+            pole.setAttribute('y2', point.y-20);
+            pole.setAttribute('stroke', '#64748B');
+            pole.setAttribute('stroke-width', '1.5');
+            pole.classList.add('task-flag');
+
+            task.pathElement.appendChild(pole);
+            task.pathElement.appendChild(flag);
+        }
+
+        function setupNavigation() {
+            const navLinks = document.querySelectorAll('.nav-link');
+            const dropdownNavLinks = document.querySelectorAll('.dropdown-nav-link');
+            const allNavLinks = [...navLinks, ...dropdownNavLinks];
+            const pageContents = document.querySelectorAll('.page-content');
+            const homeHeaderContent = document.getElementById('home-header-content');
+
+            function switchTab(targetId) {
+                pageContents.forEach(content => {
+                    content.classList.add('hidden');
+                });
+                const targetContent = document.getElementById(targetId);
+                if (targetContent) {
+                    targetContent.classList.remove('hidden');
+                    setTimeout(() => targetContent.classList.add('visible'), 10);
+                }
+
+                if (targetId === 'home-section') {
+                    homeHeaderContent.classList.remove('hidden');
+                } else {
+                    homeHeaderContent.classList.add('hidden');
+                }
+
+                navLinks.forEach(link => {
+                    link.classList.remove('border-mindsphere-purple', 'text-gray-900');
+                    link.classList.add('border-transparent', 'text-gray-500', 'hover:border-gray-300', 'hover:text-gray-700');
+                    if (link.dataset.target === targetId) {
+                        link.classList.add('border-mindsphere-purple', 'text-gray-900');
+                        link.classList.remove('border-transparent', 'text-gray-500', 'hover:border-gray-300', 'hover:text-gray-700');
+                    }
+                });
+                 if (![...navLinks].some(link => link.dataset.target === targetId)) {
+                    navLinks.forEach(link => {
+                        link.classList.remove('border-mindsphere-purple', 'text-gray-900');
+                        link.classList.add('border-transparent', 'text-gray-500');
+                    });
+                }
+            }
+
+            allNavLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchTab(link.dataset.target);
+                    if (link.classList.contains('dropdown-nav-link')) {
+                        dom.avatar.dropdown.classList.add('hidden');
+                    }
+                });
+            });
+        }
+
+        function setupProfileEditing() {
+            const profileSection = document.getElementById('profile-section');
+        
+            const restrictInput = (e) => {
+                const p = e.target;
+                const field = p.dataset.field;
+                let originalText = p.textContent;
+                let sanitizedText = originalText;
+                
+                if (field === 'dob') {
+                    sanitizedText = originalText.replace(/[^0-9/]/g, '');
+                } else if (field === 'age' || field === 'contact') {
+                    sanitizedText = originalText.replace(/[^0-9]/g, '');
+                }
+        
+                if (sanitizedText !== originalText) {
+                    p.textContent = sanitizedText;
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    if (sel.rangeCount > 0) {
+                        const currentRange = sel.getRangeAt(0);
+                        const endContainer = currentRange.endContainer;
+                        if (p.contains(endContainer)) {
+                            range.selectNodeContents(p);
+                            range.collapse(false);
+                            sel.removeAllRanges();
+                            sel.addRange(range);
+                        }
+                    }
+                }
+            };
+        
+            profileSection.addEventListener('click', (e) => {
+                const lang = document.documentElement.lang || 'en';
+                if (e.target.classList.contains('edit-btn')) {
+                    const button = e.target;
+                    const p = button.previousElementSibling;
+                    const field = p.dataset.field;
+                    p.contentEditable = true;
+                    p.focus();
+                    if (field === 'dob' || field === 'age' || field === 'contact') {
+                        p.addEventListener('input', restrictInput);
+                        p.setAttribute('inputmode', 'numeric');
+                    }
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    range.selectNodeContents(p);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    button.textContent = translations[lang].save_button || 'Save';
+                    button.classList.replace('edit-btn', 'save-btn');
+                } else if (e.target.classList.contains('save-btn')) {
+                    const button = e.target;
+                    const p = button.previousElementSibling;
+                    const field = p.dataset.field;
+                    p.contentEditable = false;
+                    if (field === 'dob' || field === 'age' || field === 'contact') {
+                        p.removeEventListener('input', restrictInput);
+                        p.removeAttribute('inputmode');
+                    }
+                    console.log(`Saved ${p.dataset.field}: ${p.textContent}`);
+                    button.textContent = translations[lang].edit_button || 'Edit';
+                    button.classList.replace('save-btn', 'edit-btn');
+                }
+            });
+        }
+
+        function setupChats() {
+            const chatItems = document.querySelectorAll('[data-chat-id]');
+            
+            function displayChat(chatId) {
+                const data = chatData[chatId];
+                if (!data) return;
+
+                let avatarHTML = '';
+                if(data.avatar) {
+                    avatarHTML = `<img src="${data.avatar}" alt="${data.name}'s avatar" class="rounded-full w-10 h-10">`;
+                } else if (data.avatarIcon) {
+                    avatarHTML = `<div class="w-10 h-10 rounded-full bg-mindsphere-light dark:bg-gray-700 flex items-center justify-center">${data.avatarIcon}</div>`;
+                }
+
+                const statusColor = data.status === 'Online' ? 'text-green-500' : 'text-xs text-gray-500';
+
+                const visibilityToggleHTML = `
+                    <div class="flex items-center gap-3">
+                        <label for="visibility-toggle" class="font-medium text-sm text-gray-700 dark:text-gray-200">Show My Name</label>
+                        <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="visibility-toggle" id="visibility-toggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" checked/>
+                            <label for="visibility-toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer"></label>
+                        </div>
+                    </div>
+                `;
+
+                dom.chats.header.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        ${avatarHTML}
+                        <div>
+                            <p class="font-bold text-gray-900 dark:text-white">${data.name}</p>
+                            <p class="text-xs ${statusColor}">${data.status}</p>
+                        </div>
+                    </div>
+                    ${data.type === 'dm' ? visibilityToggleHTML : ''}
+                `;
+                dom.chats.messagesArea.innerHTML = data.messagesHTML;
+                dom.chats.groupNote.classList.toggle('hidden', data.type !== 'group');
+
+                chatItems.forEach(item => {
+                    item.classList.remove('bg-mindsphere-light', 'dark:bg-gray-900');
+                    if (item.dataset.chatId === chatId) {
+                        item.classList.add('bg-mindsphere-light', 'dark:bg-gray-900');
+                    }
+                });
+            }
+
+            chatItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    displayChat(item.dataset.chatId);
+                });
+            });
+            displayChat('rita');
+        }
+
+        function setLanguage(lang = 'en') {
+            localStorage.setItem('mindsphere-lang', lang);
+            document.documentElement.lang = lang;
+            const elements = document.querySelectorAll('[data-lang-key]');
+            elements.forEach(el => {
+                const key = el.dataset.langKey;
+                const translation = translations[lang][key];
+                if (translation) {
+                    if ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && el.hasAttribute('placeholder')) {
+                        el.placeholder = translation;
+                    } else {
+                        el.innerHTML = translation;
+                    }
+                }
+            });
+        }
+
+        function setTheme(theme = 'light') {
+            localStorage.setItem('mindsphere-theme', theme);
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.theme === theme) {
+                    btn.classList.add('active');
+                }
+            });
+            // Re-create sky if pomodoro page is open
+            if(!dom.pomodoro.page.classList.contains('hidden')) {
+                createSky();
+            }
+        }
+
+        function setupAppearance() {
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setTheme(btn.dataset.theme);
+                });
+            });
+
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    setLanguage(btn.dataset.lang);
+                    dom.avatar.dropdown.classList.add('hidden');
+                });
+            });
+            
+            const savedTheme = localStorage.getItem('mindsphere-theme') || 'light';
+            const savedLang = localStorage.getItem('mindsphere-lang') || 'en';
+            setTheme(savedTheme);
+            setLanguage(savedLang);
+        }
+
+        function setupLocation() {
+            dom.location.btn.addEventListener('click', () => {
+                if (!navigator.geolocation) {
+                    dom.location.output.textContent = "Geolocation is not supported by your browser.";
+                    return;
+                }
+
+                function success(position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    dom.location.output.textContent = `Lat: ${latitude.toFixed(4)}, Lon: ${longitude.toFixed(4)}`;
+                    dom.location.addressInput.value = '';
+                }
+
+                function error() {
+                    const lang = document.documentElement.lang || 'en';
+                    dom.location.output.textContent = translations[lang].location_error || "Unable to retrieve your location.";
+                }
+                
+                const lang = document.documentElement.lang || 'en';
+                dom.location.output.textContent = translations[lang].location_fetching || 'Fetching location...';
+                navigator.geolocation.getCurrentPosition(success, error);
+            });
+        }
+
+        function setupMedicalHistory() {
+            const fileInputs = [
+                { input: document.getElementById('file-upload-1'), nameEl: document.getElementById('file-name-1') },
+                { input: document.getElementById('file-upload-2'), nameEl: document.getElementById('file-name-2') },
+                { input: document.getElementById('file-upload-3'), nameEl: document.getElementById('file-name-3') },
+            ];
+
+            fileInputs.forEach(item => {
+                if (item.input) {
+                    item.input.addEventListener('change', (e) => {
+                        if (e.target.files.length > 0) {
+                            item.nameEl.textContent = e.target.files[0].name;
+                        } else {
+                            item.nameEl.textContent = '';
+                        }
+                    });
+                }
+            });
+        }
+
+        function setupChatbot() {
+            function openChatbot() {
+                dom.chatbot.modal.classList.add('active');
+                 if (dom.chatbot.messages.children.length === 0) {
+                    addBotMessage(translations[document.documentElement.lang].chatbot_greeting);
+                }
+            }
+            function closeChatbot() { dom.chatbot.modal.classList.remove('active'); }
+            
+            function addUserMessage(text) {
+                const messageEl = document.createElement('div');
+                messageEl.className = 'flex justify-end';
+                messageEl.innerHTML = `<div class="chat-message bg-mindsphere-blue text-white rounded-lg p-3 break-words">${text}</div>`;
+                dom.chatbot.messages.appendChild(messageEl);
+                dom.chatbot.messages.scrollTop = dom.chatbot.messages.scrollHeight;
+            }
+            
+            function addBotMessage(html) {
+                const messageEl = document.createElement('div');
+                messageEl.className = 'flex justify-start';
+                messageEl.innerHTML = `<div class="chat-message bg-gray-200 text-gray-800 rounded-lg p-3 dark:bg-gray-700 dark:text-gray-200 break-words">${html}</div>`;
+                dom.chatbot.messages.appendChild(messageEl);
+                dom.chatbot.messages.scrollTop = dom.chatbot.messages.scrollHeight;
+            }
+
+            async function handleSendMessage() {
+                const userText = dom.chatbot.input.value.trim();
+                if (!userText) return;
+
+                addUserMessage(userText);
+                dom.chatbot.input.value = '';
+                dom.chatbot.reportActions.classList.add('hidden');
+
+                addBotMessage('<div class="flex justify-center items-center p-2"><div class="spinner"></div></div>');
+                
+                const botResponse = await callGemini(userText, 1000);
+                
+                const lastMessage = dom.chatbot.messages.lastChild;
+                if (lastMessage && lastMessage.querySelector('.spinner')) {
+                    lastMessage.remove();
+                }
+                addBotMessage(botResponse);
+            }
+
+            async function handleGenerateChatbotReport() {
+                addBotMessage('<div class="flex justify-center items-center p-2"><div class="spinner"></div></div>');
+                dom.chatbot.reportActions.classList.add('hidden');
+                
+                const geminiResponse = await callGemini("Generate a therapist report based on the user's concerns discussed in the chat.");
+                
+                const lastMessage = dom.chatbot.messages.lastChild;
+                if (lastMessage && lastMessage.querySelector('.spinner')) {
+                    lastMessage.remove();
+                }
+
+                const formattedResponse = geminiResponse
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n/g, '<br>');
+
+                addBotMessage(formattedResponse);
+                dom.chatbot.reportActions.classList.remove('hidden');
+                const lang = document.documentElement.lang || 'en';
+                dom.chatbot.copyReportBtn.textContent = translations[lang].chatbot_copy_report || 'Copy Report';
+            }
+
+            function handleCopyChatbotReport() {
+                const reportElement = dom.chatbot.messages.lastChild.querySelector('.chat-message');
+                if (!reportElement) return;
+
+                const reportText = reportElement.innerText;
+                const lang = document.documentElement.lang || 'en';
+                
+                const textArea = document.createElement("textarea");
+                textArea.value = reportText;
+                textArea.style.position = "fixed";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        dom.chatbot.copyReportBtn.textContent = translations[lang].chatbot_report_copied || 'Copied!';
+                        setTimeout(() => {
+                            dom.chatbot.copyReportBtn.textContent = translations[lang].chatbot_copy_report || 'Copy Report';
+                        }, 2000);
+                    }
+                } catch (err) {
+                    console.error('Fallback: Unable to copy', err);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            function handleDownloadPdfReport() {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+
+                const reportElement = dom.chatbot.messages.lastChild.querySelector('.chat-message');
+                if (!reportElement) return;
+
+                const reportText = reportElement.innerText;
+                
+                doc.setFontSize(18);
+                doc.setFont("helvetica", "bold");
+                doc.text("MindSphere Therapist Report", 105, 20, null, null, "center");
+
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                const splitText = doc.splitTextToSize(reportText, 180);
+                doc.text(splitText, 15, 40);
+
+                doc.save('MindSphere_Report.pdf');
+            }
+
+            dom.chatbot.fab.addEventListener('click', () => {
+                if (dom.chatbot.modal.classList.contains('active')) {
+                    closeChatbot();
+                } else {
+                    openChatbot();
+                }
+            });
+            dom.chatbot.closeBtn.addEventListener('click', closeChatbot);
+            dom.chatbot.sendBtn.addEventListener('click', handleSendMessage);
+            dom.chatbot.input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSendMessage();
+            });
+            dom.chatbot.reportBtn.addEventListener('click', handleGenerateChatbotReport);
+            dom.chatbot.copyReportBtn.addEventListener('click', handleCopyChatbotReport);
+            dom.chatbot.pdfReportBtn.addEventListener('click', handleDownloadPdfReport);
+        }
+
+        // --- EVENT LISTENERS ---
+        dom.masterModal.backdrop.addEventListener('click', closeMasterModal);
+        dom.sosModal.btn.addEventListener('click', openSosModal);
+        dom.sosModal.backdrop.addEventListener('click', closeSosModal);
+        dom.helplineFormModal.callBtn.addEventListener('click', () => {
+            closeSosModal();
+            openHelplineFormModal();
+        });
+        dom.helplineFormModal.backdrop.addEventListener('click', closeHelplineFormModal);
+        dom.helplineFormModal.sendBtn.addEventListener('click', sendHelplineRequest);
+        dom.todo.addBtn.addEventListener('click', addTodo);
+        dom.todo.input.addEventListener('keypress', (e) => { if (e.key === 'Enter') addTodo(); });
+        dom.quote.btn.addEventListener('click', generateAffirmation);
+        dom.wellnessCoach.askBtn.addEventListener('click', askWellnessCoach);
+        dom.wellnessCoach.prompt.addEventListener('keypress', (e) => { if (e.key === 'Enter') askWellnessCoach(); });
+        dom.wellnessCoach.summaryBtn.addEventListener('click', generateTherapistReport);
+        dom.wellnessCoach.copyBtn.addEventListener('click', copyReportToClipboard);
+        
+        dom.avatar.button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dom.avatar.dropdown.classList.toggle('hidden');
+        });
+
+        window.addEventListener('click', () => {
+            if (!dom.avatar.dropdown.classList.contains('hidden')) {
+                dom.avatar.dropdown.classList.add('hidden');
+            }
+             if (!dom.pomodoro.settingsMenu.classList.contains('hidden')) {
+                dom.pomodoro.settingsMenu.classList.add('hidden');
+            }
+        });
+
+        // Pomodoro Listeners
+        dom.pomodoro.openBtn.addEventListener('click', openPomodoroPage);
+        dom.pomodoro.closeBtn.addEventListener('click', closePomodoroPage);
+        dom.pomodoro.startPauseBtn.addEventListener('click', () => pomodoro.handleStartPause());
+        dom.pomodoro.skipBtn.addEventListener('click', () => pomodoro.handleSkip());
+        dom.pomodoro.settingsBtn.addEventListener('click', (e) => {
+             e.stopPropagation();
+            dom.pomodoro.settingsMenu.classList.toggle('hidden');
+        });
+        dom.pomodoro.settingsMenu.addEventListener('click', e => e.stopPropagation());
+        Object.values(dom.pomodoro.inputs).forEach(input => {
+            input.addEventListener('change', () => pomodoro.applySettings());
+        });
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMasters();
+            generateAffirmation();
+            setupNavigation();
+            setupProfileEditing();
+            setupAppearance();
+            setupLocation();
+            setupMedicalHistory();
+            setupChatbot();
+            setupChats();
+            redrawGrowthPath();
+            dom.todo.input.value = 'Prepare for my exams'; addTodo();
+            dom.todo.input.value = 'Write one thing I am grateful for'; addTodo();
+            document.querySelectorAll('.animated-section').forEach(el => {
+                setTimeout(() => el.classList.add('visible'), 10);
+            });
+        });
+    </script>
+</body>
+</html>
